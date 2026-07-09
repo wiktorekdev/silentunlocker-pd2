@@ -1,19 +1,10 @@
 # Silent DLC Unlocker
 
 <p align="center">
-  <img src="https://img.shields.io/badge/PAYDAY%202-DLC%20Unlocker-c41e3a?style=for-the-badge&logo=steam&logoColor=white" alt="PAYDAY 2" />
-</p>
-
-<p align="center">
-  <a href="https://superblt.znix.xyz"><img src="https://img.shields.io/badge/SuperBLT-required-0f172a?style=flat-square&labelColor=1e293b" alt="SuperBLT" /></a>
-  <img src="https://img.shields.io/badge/Lua-100%25-2C2D72?style=flat-square&logo=lua&logoColor=white" alt="Lua" />
   <img src="https://img.shields.io/badge/version-1.4.0-3b82f6?style=flat-square" alt="Version" />
-  <img src="https://img.shields.io/badge/platform-Steam%20%7C%20Epic-111827?style=flat-square" alt="Platform" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="Stars" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/issues"><img src="https://img.shields.io/github/issues/wiktorekdev/silentunlocker-pd2?style=flat-square&color=ef4444" alt="Issues" /></a>
-  <img src="https://img.shields.io/badge/CHEATER%20marks-yes-dc2626?style=flat-square" alt="Cheater marks" />
-  <img src="https://img.shields.io/badge/loadout%20spoof-no-64748b?style=flat-square" alt="No spoof" />
 </p>
 
 <p align="center">
