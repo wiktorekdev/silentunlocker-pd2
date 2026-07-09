@@ -3,7 +3,7 @@
 	"description": "Full DLC unlock. Modes: Safe (block) / Normal (confirm) / Risky (free). Crime.Net tools.",
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
-	"version": "1.4.0",
+	"version": "1.4.1",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [
