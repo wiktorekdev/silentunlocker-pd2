@@ -11,7 +11,8 @@ SilentDLC.MODE = {
 
 SilentDLC.settings = SilentDLC.settings or {
 	mode = SilentDLC.MODE.SAFE,
-	block_risky_host_jobs = true
+	block_risky_host_jobs = true,
+	hide_risky_heists = false
 }
 
 SilentDLC.real_owned = SilentDLC.real_owned or {}
@@ -25,7 +26,8 @@ function SilentDLC:save()
 
 	file:write(json.encode({
 		mode = self.settings.mode,
-		block_risky_host_jobs = self.settings.block_risky_host_jobs
+		block_risky_host_jobs = self.settings.block_risky_host_jobs,
+		hide_risky_heists = self.settings.hide_risky_heists
 	}))
 	file:close()
 end
@@ -54,6 +56,10 @@ function SilentDLC:load()
 
 	if data.block_risky_host_jobs ~= nil then
 		self.settings.block_risky_host_jobs = data.block_risky_host_jobs and true or false
+	end
+
+	if data.hide_risky_heists ~= nil then
+		self.settings.hide_risky_heists = data.hide_risky_heists and true or false
 	end
 end
 
@@ -471,12 +477,9 @@ function SilentDLC:crafted_mask_is_risky(crafted)
 	return false
 end
 
+-- True if HOSTING this job can CHEATER-tag you (unowned DLC contract)
 function SilentDLC:is_job_risky_to_host(job_id)
-	if not self.settings.block_risky_host_jobs then
-		return false
-	end
-
-	if not job_id or not tweak_data.narrative then
+	if not job_id or not tweak_data or not tweak_data.narrative then
 		return false
 	end
 
@@ -486,6 +489,31 @@ function SilentDLC:is_job_risky_to_host(job_id)
 	end
 
 	return self:dlc_is_risky(job_tweak.dlc)
+end
+
+function SilentDLC:should_block_host_job(job_id)
+	if not self.settings.block_risky_host_jobs then
+		return false
+	end
+
+	return self:is_job_risky_to_host(job_id)
+end
+
+function SilentDLC:should_hide_risky_heists()
+	return self.settings.hide_risky_heists and true or false
+end
+
+function SilentDLC:should_mark_risky_heists()
+	return self:should_mark_risky()
+end
+
+function SilentDLC:notify(text)
+	if managers and managers.chat then
+		managers.chat:feed_system_message(ChatManager.GAME, "[SilentDLC] " .. tostring(text))
+		return
+	end
+
+	log("[SilentDLC] " .. tostring(text))
 end
 
 function SilentDLC:risk_label(category, item_id)
