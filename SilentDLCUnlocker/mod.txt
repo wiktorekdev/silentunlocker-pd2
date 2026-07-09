@@ -1,0 +1,27 @@
+{
+	"name": "Silent DLC Unlocker",
+	"description": "Full DLC unlock + CHEATER badges and safe equip filter. No loadout spoof.",
+	"author": "wiktorekdev",
+	"contact": "https://github.com/wiktorekdev",
+	"version": "1.2.1",
+	"blt_version": 2,
+	"priority": 1,
+	"hooks": [
+		{
+			"hook_id": "lib/managers/dlcmanager",
+			"script_path": "dlc_unlock.lua"
+		},
+		{
+			"hook_id": "lib/managers/blackmarketmanager",
+			"script_path": "equip_guard.lua"
+		},
+		{
+			"hook_id": "lib/managers/menu/blackmarketgui",
+			"script_path": "gui_mark.lua"
+		},
+		{
+			"hook_id": "lib/managers/menumanager",
+			"script_path": "menu.lua"
+		}
+	]
+}
