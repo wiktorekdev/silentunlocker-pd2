@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://superblt.znix.xyz"><img src="https://img.shields.io/badge/SuperBLT-required-0f172a?style=flat-square&labelColor=1e293b" alt="SuperBLT" /></a>
   <img src="https://img.shields.io/badge/Lua-100%25-2C2D72?style=flat-square&logo=lua&logoColor=white" alt="Lua" />
-  <img src="https://img.shields.io/badge/version-1.3.0-3b82f6?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.4.0-3b82f6?style=flat-square" alt="Version" />
   <img src="https://img.shields.io/badge/platform-Steam%20%7C%20Epic-111827?style=flat-square" alt="Platform" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="Stars" /></a>
@@ -78,20 +78,21 @@ PAYDAY 2/
 
 Open **Options → Mod Options → Silent DLC Unlocker**.
 
-| Mode | Unlock | Badge | Equip risky items |
-|:-----|:------:|:-----:|:------------------|
+| Mode | Unlock | Badge | Risky equip / host heist |
+|:-----|:------:|:-----:|:-------------------------|
 | **Safe** (default) | all | yes | blocked |
-| **Mark only** | all | yes | allowed (you can get tagged) |
-| **All** | all | no | allowed |
+| **Normal** | all | yes | Yes/No confirm popup |
+| **Risky** | all | no | free, no prompts |
 
-### Heist options
+Old save values `mark` / `all` map to Normal / Risky.
+
+### Extra option
 
 | Option | Default | Effect |
 |:-------|:-------:|:-------|
-| **Block hosting unowned DLC heists** | on | Stops you from hosting contracts that would CHEATER-tag you |
-| **Hide risky heists on Crime.Net** | off | Removes those pins from the offline/host Crime.Net pool |
+| **Hide risky heists on Crime.Net** | off | Removes unowned DLC host pins from the Crime.Net map pool |
 
-Heist pins you can host show a red **[CHEATER]** label when the DLC is unowned. Joining someone else's lobby is not marked that way.
+Heist pins you can host show a red **[CHEATER]** label in Safe/Normal when the DLC is unowned. Joining someone else's lobby is not marked that way.
 
 ### Updates
 
@@ -127,7 +128,7 @@ CHEATER tag on other players still comes from **Steam ownership of what you equi
 - Steam inventory / marketplace skins are not DLC flags
 - Some event cosmetics sit outside DLC tables
 - Epic ownership uses the pre-unlock snapshot (no Steam API there)
-- Hosting unowned DLC heists can still tag you if block-host is turned off
+- Hosting unowned DLC heists can still tag you in Normal (if you confirm) or Risky
 
 ---
 

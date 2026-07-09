@@ -1,9 +1,9 @@
 {
 	"name": "Silent DLC Unlocker",
-	"description": "Full DLC unlock + CHEATER badges, heist host block, Crime.Net filter. No loadout spoof.",
+	"description": "Full DLC unlock. Modes: Safe (block) / Normal (confirm) / Risky (free). Crime.Net tools.",
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
-	"version": "1.3.0",
+	"version": "1.4.0",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [

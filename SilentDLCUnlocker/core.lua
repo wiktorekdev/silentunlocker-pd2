@@ -3,20 +3,40 @@ SilentDLC = SilentDLC or {}
 SilentDLC.MOD_PATH = SilentDLC.MOD_PATH or ModPath
 SilentDLC.SAVE_PATH = SavePath .. "silent_dlc_unlocker.json"
 
+-- safe   = hard block risky actions
+-- normal = confirm popup, then allow
+-- risky  = no blocks, no popups
 SilentDLC.MODE = {
 	SAFE = "safe",
-	MARK = "mark",
-	ALL = "all"
+	NORMAL = "normal",
+	RISKY = "risky"
 }
 
 SilentDLC.settings = SilentDLC.settings or {
 	mode = SilentDLC.MODE.SAFE,
-	block_risky_host_jobs = true,
 	hide_risky_heists = false
 }
 
 SilentDLC.real_owned = SilentDLC.real_owned or {}
 SilentDLC._ownership_ready = SilentDLC._ownership_ready or false
+SilentDLC._pass_guard = false
+
+function SilentDLC:normalize_mode(mode)
+	if mode == self.MODE.SAFE or mode == self.MODE.NORMAL or mode == self.MODE.RISKY then
+		return mode
+	end
+
+	-- legacy saves
+	if mode == "mark" then
+		return self.MODE.NORMAL
+	end
+
+	if mode == "all" then
+		return self.MODE.RISKY
+	end
+
+	return self.MODE.SAFE
+end
 
 function SilentDLC:save()
 	local file = io.open(self.SAVE_PATH, "w")
@@ -26,7 +46,6 @@ function SilentDLC:save()
 
 	file:write(json.encode({
 		mode = self.settings.mode,
-		block_risky_host_jobs = self.settings.block_risky_host_jobs,
 		hide_risky_heists = self.settings.hide_risky_heists
 	}))
 	file:close()
@@ -50,12 +69,8 @@ function SilentDLC:load()
 		return
 	end
 
-	if data.mode == self.MODE.SAFE or data.mode == self.MODE.MARK or data.mode == self.MODE.ALL then
-		self.settings.mode = data.mode
-	end
-
-	if data.block_risky_host_jobs ~= nil then
-		self.settings.block_risky_host_jobs = data.block_risky_host_jobs and true or false
+	if data.mode then
+		self.settings.mode = self:normalize_mode(data.mode)
 	end
 
 	if data.hide_risky_heists ~= nil then
@@ -64,10 +79,7 @@ function SilentDLC:load()
 end
 
 function SilentDLC:set_mode(mode)
-	if mode ~= self.MODE.SAFE and mode ~= self.MODE.MARK and mode ~= self.MODE.ALL then
-		return
-	end
-
+	mode = self:normalize_mode(mode)
 	self.settings.mode = mode
 	self:save()
 end
@@ -76,21 +88,106 @@ function SilentDLC:is_safe_mode()
 	return self.settings.mode == self.MODE.SAFE
 end
 
-function SilentDLC:is_mark_mode()
-	return self.settings.mode == self.MODE.MARK
+function SilentDLC:is_normal_mode()
+	return self.settings.mode == self.MODE.NORMAL
 end
 
+function SilentDLC:is_risky_mode()
+	return self.settings.mode == self.MODE.RISKY
+end
+
+-- legacy name
 function SilentDLC:is_all_mode()
-	return self.settings.mode == self.MODE.ALL
+	return self:is_risky_mode()
 end
 
 function SilentDLC:should_block_risky()
 	return self:is_safe_mode()
 end
 
+function SilentDLC:should_confirm_risky()
+	return self:is_normal_mode()
+end
+
 function SilentDLC:should_mark_risky()
-	-- Mark in safe + mark modes. ALL = no marks.
-	return not self:is_all_mode()
+	-- badges in safe + normal; risky mode is unrestricted and unmarked
+	return not self:is_risky_mode()
+end
+
+function SilentDLC:confirm(title, text, yes_clbk)
+	title = title or "Silent DLC Unlocker"
+	text = text or "Continue?"
+
+	local function run_yes()
+		if yes_clbk then
+			yes_clbk()
+		end
+	end
+
+	if QuickMenu and QuickMenu.new then
+		QuickMenu:new(title, text, {
+			{
+				text = "Yes",
+				callback = run_yes
+			},
+			{
+				text = "No",
+				is_cancel_button = true
+			}
+		}, true)
+
+		return
+	end
+
+	if managers and managers.system_menu then
+		managers.system_menu:show({
+			title = title,
+			text = text,
+			button_list = {
+				{
+					text = "Yes",
+					callback_func = run_yes
+				},
+				{
+					text = "No",
+					cancel_button = true
+				}
+			}
+		})
+
+		return
+	end
+
+	-- last resort: do not auto-accept risky actions
+	self:notify(title .. ": " .. text .. " (no UI to confirm)")
+end
+
+-- Gate a CHEATER-risk action by mode.
+-- returns: "allow" | "deny" | "pending"
+function SilentDLC:gate_risky(message, on_allow)
+	if self._pass_guard or self:is_risky_mode() then
+		return "allow"
+	end
+
+	if self:is_safe_mode() then
+		self:notify("Blocked: " .. tostring(message))
+
+		return "deny"
+	end
+
+	-- normal: confirm
+	self:confirm("CHEATER risk", tostring(message) .. "\n\nContinue anyway?", function()
+		self._pass_guard = true
+		local ok, err = pcall(on_allow)
+
+		self._pass_guard = false
+
+		if not ok then
+			log("[SilentDLC] gate callback error: " .. tostring(err))
+		end
+	end)
+
+	return "pending"
 end
 
 function SilentDLC:record_real_ownership(dlc_name, owned)
@@ -489,14 +586,6 @@ function SilentDLC:is_job_risky_to_host(job_id)
 	end
 
 	return self:dlc_is_risky(job_tweak.dlc)
-end
-
-function SilentDLC:should_block_host_job(job_id)
-	if not self.settings.block_risky_host_jobs then
-		return false
-	end
-
-	return self:is_job_risky_to_host(job_id)
 end
 
 function SilentDLC:should_hide_risky_heists()

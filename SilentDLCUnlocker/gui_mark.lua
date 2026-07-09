@@ -156,8 +156,10 @@ if BlackMarketGui and BlackMarketGui.update_info_text then
 		end
 
 		local msg = "⚠ CHEATER TAG if equipped online (unowned DLC)"
-		if SilentDLC:should_block_risky() then
-			msg = msg .. " — SAFE mode blocks equip"
+		if SilentDLC:is_safe_mode() then
+			msg = msg .. " | Safe mode blocks this"
+		elseif SilentDLC:is_normal_mode() then
+			msg = msg .. " | Normal mode asks to confirm"
 		end
 
 		append_info(self, msg)

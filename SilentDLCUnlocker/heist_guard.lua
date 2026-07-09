@@ -131,7 +131,7 @@ if not SilentDLC._heist_contract_hooked and CrimeNetContractGui and CrimeNetCont
 end
 
 -- ---------------------------------------------------------------------------
--- Block hosting unowned DLC heists
+-- Hosting unowned DLC heists: Safe blocks, Normal confirms, Risky allows
 -- ---------------------------------------------------------------------------
 if not SilentDLC._heist_start_hooked and MenuCallbackHandler and MenuCallbackHandler.start_job then
 	SilentDLC._heist_start_hooked = true
@@ -139,10 +139,21 @@ if not SilentDLC._heist_start_hooked and MenuCallbackHandler and MenuCallbackHan
 	local old_start = MenuCallbackHandler.start_job
 
 	function MenuCallbackHandler:start_job(job_data)
-		if job_data and job_data.job_id and SilentDLC:should_block_host_job(job_data.job_id) then
-			SilentDLC:notify("Blocked host: unowned DLC heist would CHEATER-tag you (" .. tostring(job_data.job_id) .. ")")
+		if SilentDLC._pass_guard then
+			return old_start(self, job_data)
+		end
 
-			return
+		if job_data and job_data.job_id and SilentDLC:is_job_risky_to_host(job_data.job_id) then
+			local result = SilentDLC:gate_risky(
+				"Hosting this DLC heist without owning the DLC can CHEATER-tag you (" .. tostring(job_data.job_id) .. ").",
+				function()
+					old_start(self, job_data)
+				end
+			)
+
+			if result ~= "allow" then
+				return
+			end
 		end
 
 		return old_start(self, job_data)
@@ -155,12 +166,23 @@ if not SilentDLC._heist_quick_hooked and MenuCallbackHandler and MenuCallbackHan
 	local old_quick = MenuCallbackHandler.play_quick_start_job
 
 	function MenuCallbackHandler:play_quick_start_job(item)
+		if SilentDLC._pass_guard then
+			return old_quick(self, item)
+		end
+
 		local job_id = item and item.parameter and item:parameter("job_id")
 
-		if job_id and SilentDLC:should_block_host_job(job_id) then
-			SilentDLC:notify("Blocked host: unowned DLC heist would CHEATER-tag you (" .. tostring(job_id) .. ")")
+		if job_id and SilentDLC:is_job_risky_to_host(job_id) then
+			local result = SilentDLC:gate_risky(
+				"Hosting this DLC heist without owning the DLC can CHEATER-tag you (" .. tostring(job_id) .. ").",
+				function()
+					old_quick(self, item)
+				end
+			)
 
-			return
+			if result ~= "allow" then
+				return
+			end
 		end
 
 		return old_quick(self, item)
