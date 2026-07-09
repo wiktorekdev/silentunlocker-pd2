@@ -7,41 +7,91 @@
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/issues"><img src="https://img.shields.io/github/issues/wiktorekdev/silentunlocker-pd2?style=flat-square&color=ef4444" alt="Issues" /></a>
 </p>
 
-PAYDAY 2 SuperBLT mod. Unlocks all DLCs, marks what can give a **CHEATER** tag, and gates risky actions by mode. No loadout spoof.
+PAYDAY 2 SuperBLT mod. Unlocks **all** DLCs (including packs stock unlockers often miss), shows what can give a **CHEATER** tag, and lets you choose how strict that is.
+
+Peers always see your real loadout. No dummy weapons. No skin changer.
+
+## Features
+
+| Feature | What it does |
+|---------|----------------|
+| **Full unlock** | Forces DLC verified + `is_dlc_unlocked` / `has_dlc`, not only `_check_dlc_data` |
+| **Package grant** | Puts weapons/mods/masks into inventory; skips broken loot rows so the game does not crash |
+| **CHEATER badges** | Red labels in inventory on unowned DLC gear that peers would flag |
+| **Crime.Net heists** | Marks host-risk DLC contracts; optional hide filter for those pins |
+| **Three modes** | Safe blocks, Normal confirms, Risky free |
+| **Auto-update** | SuperBLT checks GitHub releases via `updates/meta.json` |
+
+### Why not just the old unlocker?
+
+Most unlockers only do:
+
+```lua
+function WINDLCManager:_check_dlc_data(dlc_data)
+  return true
+end
+```
+
+That is not enough for many packs (weapon DLCs, `has_*` checks). Items can stay locked or never enter the inventory. This mod also re-grants packages safely and tracks **real** Steam ownership for badges/gating.
 
 ## Install
 
-1. [SuperBLT](https://superblt.znix.xyz)
-2. Drop `SilentDLCUnlocker` into `PAYDAY 2/mods/`
-3. Remove other DLC unlockers
-4. Launch (restart once if inventory was half-broken by an old unlocker)
+1. Install [SuperBLT](https://superblt.znix.xyz)
+2. Copy `SilentDLCUnlocker` into `PAYDAY 2/mods/`
+3. Remove any other DLC unlocker
+4. Launch once (restart if an old unlocker left a half-broken inventory)
 
-[Latest release](https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest) · SuperBLT auto-updates via `updates/meta.json`
+[Latest release](https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest)
+
+```text
+PAYDAY 2/mods/SilentDLCUnlocker/
+```
 
 ## Modes
 
 **Options → Mod Options → Silent DLC Unlocker**
 
-| Mode | CHEATER badges | Risky equip / host DLC heist |
-|------|----------------|------------------------------|
-| **Safe** (default) | yes | blocked |
-| **Normal** | yes | confirm popup |
-| **Risky** | no | free |
+| Mode | Badges | Risky equip | Host unowned DLC heist |
+|------|:------:|:-----------:|:-----------------------|
+| **Safe** (default) | yes | blocked | blocked |
+| **Normal** | yes | Yes/No popup | Yes/No popup |
+| **Risky** | no | free | free |
 
-Optional: **Hide risky heists on Crime.Net** (unowned DLC host pins).
+Extra toggle: **Hide risky heists on Crime.Net** (default off). Removes unowned DLC host pins from the map pool.
 
-## CHEATER risk
+Joining someone else's lobby is not treated as hosting. Only **you** hosting an unowned DLC contract is the heist risk.
 
-**Can tag you (if unowned):** weapons, weapon mods, masks, materials/patterns, weapon colors, melee, hosting that DLC heist
+## What can give CHEATER tag
 
-**Usually fine:** outfits, gloves, characters, perk decks, throwables, deployables, many free/`is_a_unlockable` mods
+If you do **not** own the DLC and you equip / host it:
 
-Tags come from peers checking **Steam ownership** of what you equip. Unlocking in the menu does not fake ownership.
+- Weapons, weapon mods, weapon colors  
+- Masks, materials, patterns  
+- Melee  
+- Hosting that DLC heist  
 
-## Notes
+Usually fine even when unlocked:
 
-- Steam inventory skins are not DLC unlocks
-- Prefer **Safe** for public lobbies
-- Unofficial fan mod. Not affiliated with Overkill / Starbreeze / Valve. Use at your own risk.
+- Outfits, gloves  
+- Characters  
+- Perk decks  
+- Equipment / throwables / deployables  
+- Some free or `is_a_unlockable` weapon mods  
 
-Inspired by [pd2-stuff/DLC-Unlocker-PD2](https://github.com/pd2-stuff/DLC-Unlocker-PD2) · by [wiktorekdev](https://github.com/wiktorekdev)
+Other players check **Steam ownership** of what you use (`Steam:is_user_product_owned`). Unlocking content in your menu does not make Steam report you as owning it.
+
+## Limits
+
+- Steam marketplace / inventory skins are separate from DLC unlock  
+- Some event cosmetics live outside DLC tables  
+- Epic uses a ownership snapshot at unlock (no Steam API)  
+- In **Normal** / **Risky** you can still get tagged if you accept the risk  
+
+## Disclaimer
+
+Unofficial fan mod. Not affiliated with Overkill, Starbreeze, or Valve. Unlocking paid DLC may break the game's terms of service. Use at your own risk. Prefer **Safe** for public lobbies.
+
+## Credits
+
+Inspired by [pd2-stuff/DLC-Unlocker-PD2](https://github.com/pd2-stuff/DLC-Unlocker-PD2).  
+Made by [wiktorekdev](https://github.com/wiktorekdev) · MIT
