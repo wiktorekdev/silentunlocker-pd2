@@ -11,6 +11,10 @@ PAYDAY 2 SuperBLT mod. Unlocks **all** DLCs (including packs stock unlockers oft
 
 Peers always see your real loadout. No dummy weapons. No skin changer.
 
+<p align="center">
+  <img src="preview.png" alt="CHEATER badges on unowned DLC weapons in the buy menu" width="900" />
+</p>
+
 ## Features
 
 | Feature | What it does |
