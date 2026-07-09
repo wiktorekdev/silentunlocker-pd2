@@ -5,6 +5,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="Stars" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/issues"><img src="https://img.shields.io/github/issues/wiktorekdev/silentunlocker-pd2?style=flat-square&color=ef4444" alt="Issues" /></a>
+  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/releases"><img src="https://img.shields.io/github/downloads/wiktorekdev/silentunlocker-pd2/total?style=flat-square&color=0ea5e9" alt="Downloads" /></a>
+  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/pulls"><img src="https://img.shields.io/github/issues-pr/wiktorekdev/silentunlocker-pd2?style=flat-square&color=a855f7" alt="Pull requests" /></a>
 </p>
 
 PAYDAY 2 SuperBLT mod. Unlocks **all** DLCs (including packs stock unlockers often miss), shows what can give a **CHEATER** tag, and lets you choose how strict that is.
