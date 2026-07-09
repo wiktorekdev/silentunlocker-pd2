@@ -13,7 +13,7 @@ SilentDLC.MODE = {
 }
 
 SilentDLC.settings = SilentDLC.settings or {
-	mode = SilentDLC.MODE.SAFE,
+	mode = SilentDLC.MODE.NORMAL,
 	hide_risky_heists = false
 }
 
@@ -35,7 +35,7 @@ function SilentDLC:normalize_mode(mode)
 		return self.MODE.RISKY
 	end
 
-	return self.MODE.SAFE
+	return self.MODE.NORMAL
 end
 
 function SilentDLC:save()

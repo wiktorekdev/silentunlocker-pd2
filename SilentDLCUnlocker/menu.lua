@@ -11,7 +11,7 @@ Hooks:Add("LocalizationManagerPostInit", "SilentDLC_Localization", function(loc)
 		silent_dlc_mode_title = "Mode",
 		silent_dlc_mode_desc = "Safe blocks risk | Normal asks to confirm | Risky no limits",
 		silent_dlc_mode_safe = "Safe (block risk)",
-		silent_dlc_mode_normal = "Normal (confirm popups)",
+		silent_dlc_mode_normal = "Normal (confirm popups, default)",
 		silent_dlc_mode_risky = "Risky (no limits)",
 		silent_dlc_hide_jobs_title = "Hide risky heists on Crime.Net",
 		silent_dlc_hide_jobs_desc = "Do not show unowned DLC heist pins on the Crime.Net map (host pool)"
@@ -27,7 +27,7 @@ Hooks:Add("MenuManagerInitialize", "SilentDLC_MenuInit", function(menu_manager)
 			SilentDLC.MODE.NORMAL,
 			SilentDLC.MODE.RISKY
 		}
-		SilentDLC:set_mode(modes[item:value()] or SilentDLC.MODE.SAFE)
+		SilentDLC:set_mode(modes[item:value()] or SilentDLC.MODE.NORMAL)
 	end
 
 	MenuCallbackHandler.silent_dlc_set_hide_jobs = function(self, item)

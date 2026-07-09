@@ -53,8 +53,8 @@ PAYDAY 2/mods/SilentDLCUnlocker/
 
 | Mode | Badges | Risky equip | Host unowned DLC heist |
 |------|:------:|:-----------:|:-----------------------|
-| **Safe** (default) | yes | blocked | blocked |
-| **Normal** | yes | Yes/No popup | Yes/No popup |
+| **Safe** | yes | blocked | blocked |
+| **Normal** (default) | yes | Yes/No popup | Yes/No popup |
 | **Risky** | no | free | free |
 
 Extra toggle: **Hide risky heists on Crime.Net** (default off). Removes unowned DLC host pins from the map pool.
@@ -89,7 +89,7 @@ Other players check **Steam ownership** of what you use (`Steam:is_user_product_
 
 ## Disclaimer
 
-Unofficial fan mod. Not affiliated with Overkill, Starbreeze, or Valve. Unlocking paid DLC may break the game's terms of service. Use at your own risk. Prefer **Safe** for public lobbies.
+Unofficial fan mod. Not affiliated with Overkill, Starbreeze, or Valve. Unlocking paid DLC may break the game's terms of service. Use at your own risk. Prefer **Safe** or **Normal** for public lobbies.
 
 ## Credits
 
