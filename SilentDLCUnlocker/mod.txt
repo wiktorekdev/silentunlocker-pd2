@@ -3,7 +3,8 @@
 	"description": "Full DLC unlock. Modes: Safe (block) / Normal (confirm) / Risky (free). Crime.Net tools.",
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
-	"version": "1.4.1",
+	"image": "logo.png",
+	"version": "1.5.0",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [
@@ -32,7 +33,15 @@
 			"script_path": "heist_guard.lua"
 		},
 		{
+			"hook_id": "lib/managers/menu/crimenetgui",
+			"script_path": "heist_guard.lua"
+		},
+		{
 			"hook_id": "lib/managers/menu/crimenetcontractgui",
+			"script_path": "heist_guard.lua"
+		},
+		{
+			"hook_id": "lib/managers/menu/contractbrokergui",
 			"script_path": "heist_guard.lua"
 		},
 		{
@@ -42,6 +51,14 @@
 		{
 			"hook_id": "lib/managers/menumanager",
 			"script_path": "menu.lua"
+		},
+		{
+			"hook_id": "lib/network/matchmaking/networkmatchmakingsteam",
+			"script_path": "session_guard.lua"
+		},
+		{
+			"hook_id": "lib/network/matchmaking/networkmatchmakingepic",
+			"script_path": "session_guard.lua"
 		}
 	]
 }

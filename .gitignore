@@ -5,3 +5,5 @@ Thumbs.db
 .vscode/
 *.zip
 SilentDLCUnlocker.zip
+__pycache__/
+*.py[cod]

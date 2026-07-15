@@ -6,6 +6,29 @@ local RISK_COLOR = Color(1, 1, 0.15, 0.15)
 local BADGE_BG = Color(0.9, 0.55, 0.05, 0.05)
 local BADGE_TEXT = "CHEATER"
 
+local function clear_slot_mark(slot)
+	if not slot then
+		return
+	end
+
+	slot._silent_dlc_risky = nil
+
+	if alive(slot._bitmap) then
+		slot._bitmap:set_color(slot._silent_dlc_bitmap_color or Color.white)
+	end
+
+	if alive(slot._akimbo_bitmap) then
+		slot._akimbo_bitmap:set_color(slot._silent_dlc_akimbo_color or Color.white)
+	end
+
+	slot._silent_dlc_bitmap_color = nil
+	slot._silent_dlc_akimbo_color = nil
+
+	if alive(slot._silent_dlc_badge) then
+		slot._silent_dlc_badge:set_visible(false)
+	end
+end
+
 local function apply_slot_mark(slot)
 	if not slot or not alive(slot._panel) then
 		return
@@ -13,10 +36,12 @@ local function apply_slot_mark(slot)
 
 	local data = slot._data
 	if not data or not SilentDLC:should_mark_risky() then
+		clear_slot_mark(slot)
 		return
 	end
 
 	if not SilentDLC:slot_data_is_risky(data) then
+		clear_slot_mark(slot)
 		return
 	end
 
@@ -24,10 +49,12 @@ local function apply_slot_mark(slot)
 
 	-- Tint main bitmap (may load later — reapplied in texture hook)
 	if alive(slot._bitmap) then
+		slot._silent_dlc_bitmap_color = slot._silent_dlc_bitmap_color or slot._bitmap:color()
 		slot._bitmap:set_color(RISK_COLOR)
 	end
 
 	if alive(slot._akimbo_bitmap) then
+		slot._silent_dlc_akimbo_color = slot._silent_dlc_akimbo_color or slot._akimbo_bitmap:color()
 		slot._akimbo_bitmap:set_color(RISK_COLOR)
 	end
 
@@ -72,18 +99,6 @@ local function apply_slot_mark(slot)
 	end
 end
 
-local function clear_slot_mark(slot)
-	if not slot then
-		return
-	end
-
-	slot._silent_dlc_risky = nil
-
-	if alive(slot._silent_dlc_badge) then
-		slot._silent_dlc_badge:set_visible(false)
-	end
-end
-
 -- Slot create
 Hooks:PostHook(BlackMarketGuiSlotItem, "init", "SilentDLC_SlotMarkInit", function(self, main_panel, data, x, y, w, h)
 	apply_slot_mark(self)
@@ -107,9 +122,7 @@ end
 
 if BlackMarketGuiSlotItem.refresh then
 	Hooks:PostHook(BlackMarketGuiSlotItem, "refresh", "SilentDLC_SlotMarkRefresh", function(self)
-		if self._silent_dlc_risky and alive(self._bitmap) then
-			self._bitmap:set_color(RISK_COLOR)
-		end
+		apply_slot_mark(self)
 	end)
 end
 
@@ -156,33 +169,16 @@ if BlackMarketGui and BlackMarketGui.update_info_text then
 		end
 
 		local msg = "⚠ CHEATER TAG if equipped online (unowned DLC)"
+		local is_character = data.category == "characters" or data.category == "character"
+		if is_character then
+			msg = "⚠ CHEATER TAG if you host with this unowned DLC character"
+		end
 		if SilentDLC:is_safe_mode() then
-			msg = msg .. " | Safe mode blocks this"
+			msg = msg .. (is_character and " | Safe mode blocks hosting with this" or " | Safe mode blocks this")
 		elseif SilentDLC:is_normal_mode() then
 			msg = msg .. " | Normal mode asks to confirm"
 		end
 
 		append_info(self, msg)
-	end)
-end
-
-if BlackMarketGui and BlackMarketGui.select_slot then
-	Hooks:PostHook(BlackMarketGui, "select_slot", "SilentDLC_SelectMark", function(self, ...)
-		-- ensure marks stay after grid rebuilds
-		if not self._tabs then
-			return
-		end
-
-		for _, tab in pairs(self._tabs) do
-			if tab and tab._slots then
-				for _, slot in ipairs(tab._slots) do
-					if slot and slot._data then
-						if SilentDLC:should_mark_risky() and SilentDLC:slot_data_is_risky(slot._data) then
-							apply_slot_mark(slot)
-						end
-					end
-				end
-			end
-		end
 	end)
 end

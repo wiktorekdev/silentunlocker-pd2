@@ -1,0 +1,62 @@
+name: Bug report
+description: Report reproducible incorrect behavior or a game compatibility problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Search existing issues first and remove other DLC unlockers before testing.
+  - type: input
+    id: version
+    attributes:
+      label: Mod version
+      placeholder: "1.5.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Steam
+        - Epic Games Store
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Safe
+        - Normal
+        - Risky
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the exact item, DLC, or contract involved.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Remove credentials, session data, and other secrets before pasting logs.
+      render: text
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other relevant mods
+      description: List mods that alter DLC, inventory, BlackMarket, Crime.Net, or menus.

@@ -14,7 +14,11 @@ Hooks:Add("LocalizationManagerPostInit", "SilentDLC_Localization", function(loc)
 		silent_dlc_mode_normal = "Normal (confirm popups, default)",
 		silent_dlc_mode_risky = "Risky (no limits)",
 		silent_dlc_hide_jobs_title = "Hide risky heists on Crime.Net",
-		silent_dlc_hide_jobs_desc = "Do not show unowned DLC heist pins on the Crime.Net map (host pool)"
+		silent_dlc_hide_jobs_desc = "Do not show unowned DLC heist pins on the Crime.Net map (host pool)",
+		silent_dlc_refresh_title = "Refresh ownership",
+		silent_dlc_refresh_desc = "Query platform ownership again and refresh risk results",
+		silent_dlc_report_title = "Show package report",
+		silent_dlc_report_desc = "Show how many DLC inventory entries were added, repaired, or skipped this session"
 	})
 end)
 
@@ -33,6 +37,15 @@ Hooks:Add("MenuManagerInitialize", "SilentDLC_MenuInit", function(menu_manager)
 	MenuCallbackHandler.silent_dlc_set_hide_jobs = function(self, item)
 		SilentDLC.settings.hide_risky_heists = item:value() == "on"
 		SilentDLC:save()
+	end
+
+	MenuCallbackHandler.silent_dlc_refresh_ownership = function(self, item)
+		SilentDLC:refresh_real_ownership()
+		SilentDLC:notify("Ownership refreshed.")
+	end
+
+	MenuCallbackHandler.silent_dlc_show_grant_report = function(self, item)
+		SilentDLC:notify(SilentDLC:grant_report_text())
 	end
 end)
 
@@ -74,6 +87,24 @@ Hooks:Add("MenuManagerPopulateCustomMenus", "SilentDLC_PopulateMenu", function(m
 		value = SilentDLC.settings.hide_risky_heists,
 		menu_id = MENU_ID,
 		priority = 80
+	})
+
+	MenuHelper:AddButton({
+		id = "silent_dlc_refresh_ownership",
+		title = "silent_dlc_refresh_title",
+		desc = "silent_dlc_refresh_desc",
+		callback = "silent_dlc_refresh_ownership",
+		menu_id = MENU_ID,
+		priority = 60
+	})
+
+	MenuHelper:AddButton({
+		id = "silent_dlc_show_grant_report",
+		title = "silent_dlc_report_title",
+		desc = "silent_dlc_report_desc",
+		callback = "silent_dlc_show_grant_report",
+		menu_id = MENU_ID,
+		priority = 40
 	})
 end)
 
