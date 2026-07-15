@@ -3,6 +3,7 @@ if not SilentDLC then
 end
 
 local RISK_COLOR = Color(1, 1, 0.2, 0.2)
+local BADGE_BG = Color(0.9, 0.55, 0.05, 0.05)
 
 -- Each hook file load only installs what is available so far.
 
@@ -101,6 +102,54 @@ if not SilentDLC._heist_gui_hooked and CrimeNetGui and CrimeNetGui._create_job_g
 end
 
 -- ---------------------------------------------------------------------------
+-- Contract Broker rows: persistent CHEATER badge before opening a contract
+-- ---------------------------------------------------------------------------
+if not SilentDLC._contract_broker_hooked and ContractBrokerHeistItem and ContractBrokerHeistItem.init then
+	SilentDLC._contract_broker_hooked = true
+
+	Hooks:PostHook(ContractBrokerHeistItem, "init", "SilentDLC_ContractBrokerMark", function(self)
+		local job_id = self._job_data and self._job_data.job_id
+
+		if not job_id or not SilentDLC:should_mark_risky_heists() or not SilentDLC:is_job_risky_to_host(job_id) then
+			return
+		end
+
+		if not alive(self._panel) or alive(self._silent_dlc_badge) then
+			return
+		end
+
+		local badge = self._panel:panel({
+			name = "silent_dlc_cheater_badge",
+			layer = 50,
+			w = 68,
+			h = 18
+		})
+		badge:set_left(4)
+		badge:set_top(14)
+
+		badge:rect({
+			color = BADGE_BG,
+			halign = "grow",
+			valign = "grow"
+		})
+
+		badge:text({
+			text = "CHEATER",
+			font = tweak_data.menu.pd2_small_font,
+			font_size = 14,
+			color = Color.white,
+			align = "center",
+			vertical = "center",
+			layer = 1,
+			w = badge:w(),
+			h = badge:h()
+		})
+
+		self._silent_dlc_badge = badge
+	end)
+end
+
+-- ---------------------------------------------------------------------------
 -- Contract details popup
 -- ---------------------------------------------------------------------------
 if not SilentDLC._heist_contract_hooked and CrimeNetContractGui and CrimeNetContractGui.init then
@@ -143,48 +192,15 @@ if not SilentDLC._heist_start_hooked and MenuCallbackHandler and MenuCallbackHan
 			return old_start(self, job_data)
 		end
 
-		if job_data and job_data.job_id and SilentDLC:is_job_risky_to_host(job_data.job_id) then
-			local result = SilentDLC:gate_risky(
-				"Hosting this DLC heist without owning the DLC can CHEATER-tag you (" .. tostring(job_data.job_id) .. ").",
-				function()
-					old_start(self, job_data)
-				end
-			)
+		local job_id = job_data and job_data.job_id
+		local result = SilentDLC:guard_multiplayer("Hosting", true, job_id, function()
+			old_start(self, job_data)
+		end)
 
-			if result ~= "allow" then
-				return
-			end
+		if result ~= "allow" then
+			return
 		end
 
 		return old_start(self, job_data)
-	end
-end
-
-if not SilentDLC._heist_quick_hooked and MenuCallbackHandler and MenuCallbackHandler.play_quick_start_job then
-	SilentDLC._heist_quick_hooked = true
-
-	local old_quick = MenuCallbackHandler.play_quick_start_job
-
-	function MenuCallbackHandler:play_quick_start_job(item)
-		if SilentDLC._pass_guard then
-			return old_quick(self, item)
-		end
-
-		local job_id = item and item.parameter and item:parameter("job_id")
-
-		if job_id and SilentDLC:is_job_risky_to_host(job_id) then
-			local result = SilentDLC:gate_risky(
-				"Hosting this DLC heist without owning the DLC can CHEATER-tag you (" .. tostring(job_id) .. ").",
-				function()
-					old_quick(self, item)
-				end
-			)
-
-			if result ~= "allow" then
-				return
-			end
-		end
-
-		return old_quick(self, item)
 	end
 end

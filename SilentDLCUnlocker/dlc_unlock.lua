@@ -69,7 +69,7 @@ local function force_all_verified()
 		if dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
 			SilentDLC:record_real_ownership(dlc_name, true)
 		elseif SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned and dlc_data.app_id then
-			SilentDLC:record_real_ownership(dlc_name, Steam:is_product_owned(dlc_data.app_id))
+			SilentDLC:record_real_ownership(dlc_name, SilentDLC:is_app_owned(dlc_data.app_id))
 		elseif SilentDLC.real_owned[dlc_name] == nil then
 			SilentDLC:record_real_ownership(dlc_name, false)
 		end
@@ -135,9 +135,16 @@ local function blackmarket_entry(type_items, item_entry)
 	return bucket[item_entry]
 end
 
-local function safe_add_inventory(global_value, type_items, item_entry, amount)
-	if not managers.blackmarket or not blackmarket_entry(type_items, item_entry) then
-		return
+local function safe_add_inventory(global_value, type_items, item_entry, amount, kind)
+	local item_path = tostring(type_items) .. "/" .. tostring(item_entry)
+	if not managers.blackmarket then
+		SilentDLC:record_grant("skipped", item_path .. " - BlackMarketManager unavailable")
+		return false
+	end
+
+	if not blackmarket_entry(type_items, item_entry) then
+		SilentDLC:record_grant("skipped", item_path .. " - missing tweak data")
+		return false
 	end
 
 	amount = amount or 1
@@ -146,10 +153,14 @@ local function safe_add_inventory(global_value, type_items, item_entry, amount)
 			managers.blackmarket:add_to_inventory(global_value, type_items, item_entry)
 		end)
 		if not ok then
-			log("[SilentDLC] add_to_inventory failed: " .. tostring(type_items) .. "/" .. tostring(item_entry) .. " - " .. tostring(err))
-			return
+			SilentDLC:record_grant("skipped", item_path .. " - " .. tostring(err))
+			return false
 		end
+
+		SilentDLC:record_grant(kind or "added")
 	end
+
+	return true
 end
 
 -- Safe replace: stock give_dlc_package crashes / misbehaves on bad loot rows
@@ -190,6 +201,7 @@ function GenericDLCManager:give_dlc_package()
 						if type_items == "armor_skins" then
 							if managers.blackmarket.on_aquired_armor_skin then
 								managers.blackmarket:on_aquired_armor_skin(item_entry)
+								SilentDLC:record_grant("added")
 							end
 							return
 						end
@@ -197,6 +209,7 @@ function GenericDLCManager:give_dlc_package()
 						if type_items == "player_styles" then
 							if managers.blackmarket.on_aquired_player_style then
 								managers.blackmarket:on_aquired_player_style(item_entry)
+								SilentDLC:record_grant("added")
 							end
 							return
 						end
@@ -204,6 +217,7 @@ function GenericDLCManager:give_dlc_package()
 						if type_items == "suit_variations" then
 							if type(item_entry) == "table" and managers.blackmarket.on_aquired_suit_variation then
 								managers.blackmarket:on_aquired_suit_variation(item_entry[1], item_entry[2])
+								SilentDLC:record_grant("added")
 							end
 							return
 						end
@@ -211,6 +225,7 @@ function GenericDLCManager:give_dlc_package()
 						if type_items == "gloves" then
 							if managers.blackmarket.on_aquired_glove_id then
 								managers.blackmarket:on_aquired_glove_id(item_entry)
+								SilentDLC:record_grant("added")
 							end
 							return
 						end
@@ -220,7 +235,7 @@ function GenericDLCManager:give_dlc_package()
 					end)
 
 					if not ok then
-						log("[SilentDLC] give_dlc_package loot skip: " .. tostring(package_id) .. " - " .. tostring(err))
+						SilentDLC:record_grant("skipped", tostring(package_id) .. " - " .. tostring(err))
 					end
 				end
 			end
@@ -278,6 +293,7 @@ function GenericDLCManager:give_missing_package()
 						local has_item = managers.blackmarket:armor_skin_unlocked(item_entry)
 						if entry and not entry.steam_economy and not has_item then
 							managers.blackmarket:on_aquired_armor_skin(item_entry)
+							SilentDLC:record_grant("repaired")
 						end
 						return
 					end
@@ -285,6 +301,7 @@ function GenericDLCManager:give_missing_package()
 					if type_items == "player_styles" then
 						if not managers.blackmarket:player_style_unlocked(item_entry) then
 							managers.blackmarket:on_aquired_player_style(item_entry)
+							SilentDLC:record_grant("repaired")
 						end
 						return
 					end
@@ -292,6 +309,7 @@ function GenericDLCManager:give_missing_package()
 					if type_items == "suit_variations" and type(item_entry) == "table" then
 						if not managers.blackmarket:suit_variation_unlocked(item_entry[1], item_entry[2]) then
 							managers.blackmarket:on_aquired_suit_variation(item_entry[1], item_entry[2])
+							SilentDLC:record_grant("repaired")
 						end
 						return
 					end
@@ -299,12 +317,14 @@ function GenericDLCManager:give_missing_package()
 					if type_items == "gloves" then
 						if not managers.blackmarket:glove_id_unlocked(item_entry) then
 							managers.blackmarket:on_aquired_glove_id(item_entry)
+							SilentDLC:record_grant("repaired")
 						end
 						return
 					end
 
 					local entry = blackmarket_entry(type_items, item_entry)
 					if not entry then
+						SilentDLC:record_grant("skipped", tostring(package_id) .. ": " .. tostring(type_items) .. "/" .. tostring(item_entry) .. " - missing tweak data")
 						return
 					end
 
@@ -343,19 +363,19 @@ function GenericDLCManager:give_missing_package()
 					end
 
 					if passed then
-						safe_add_inventory(global_value, type_items, item_entry, loot_drop.amount or 1)
+						safe_add_inventory(global_value, type_items, item_entry, loot_drop.amount or 1, "repaired")
 					end
 				end)
 
 				if not ok then
-					log("[SilentDLC] give_missing_package loot skip: " .. tostring(package_id) .. " - " .. tostring(err))
+					SilentDLC:record_grant("skipped", tostring(package_id) .. " - " .. tostring(err))
 				end
 			end
 		end
 	end
 end
 
-local function regrant_packages(dlc_manager)
+local function grant_packages(dlc_manager)
 	if not Global.dlc_save then
 		Global.dlc_save = { packages = {} }
 	end
@@ -363,30 +383,23 @@ local function regrant_packages(dlc_manager)
 		Global.dlc_save.packages = {}
 	end
 
-	-- Once per session: re-open package grant for packs you don't really own
-	if not SilentDLC._packages_regiven and tweak_data and tweak_data.dlc then
-		SilentDLC._packages_regiven = true
-
-		for package_id, _ in pairs(tweak_data.dlc) do
-			if not SilentDLC:is_dlc_really_owned(package_id) then
-				Global.dlc_save.packages[package_id] = nil
-			end
-		end
-	end
+	SilentDLC:begin_grant_report()
 
 	local ok1, err1 = pcall(function()
 		dlc_manager:give_dlc_package()
 	end)
 	if not ok1 then
-		log("[SilentDLC] give_dlc_package error: " .. tostring(err1))
+		SilentDLC:record_grant("skipped", "give_dlc_package - " .. tostring(err1))
 	end
 
 	local ok2, err2 = pcall(function()
 		dlc_manager:give_missing_package()
 	end)
 	if not ok2 then
-		log("[SilentDLC] give_missing_package error: " .. tostring(err2))
+		SilentDLC:record_grant("skipped", "give_missing_package - " .. tostring(err2))
 	end
+
+	SilentDLC:finish_grant_report()
 end
 
 force_unlock_api()
@@ -417,7 +430,7 @@ end)
 
 Hooks:PostHook(GenericDLCManager, "give_dlc_and_verify_blackmarket", "SilentDLC_GiveAndVerify", function(self)
 	force_all_verified()
-	regrant_packages(self)
+	grant_packages(self)
 	SilentDLC:refresh_real_ownership()
 end)
 

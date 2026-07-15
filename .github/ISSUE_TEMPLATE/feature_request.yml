@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a focused improvement to the mod.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What is difficult today, and who would benefit?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Does this affect ownership or CHEATER-tag detection?
+      options:
+        - "No"
+        - "Yes"
+        - Unsure
+    validations:
+      required: true

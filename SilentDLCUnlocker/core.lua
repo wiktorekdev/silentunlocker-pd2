@@ -18,8 +18,10 @@ SilentDLC.settings = SilentDLC.settings or {
 }
 
 SilentDLC.real_owned = SilentDLC.real_owned or {}
+SilentDLC.owned_by_app = SilentDLC.owned_by_app or {}
 SilentDLC._ownership_ready = SilentDLC._ownership_ready or false
 SilentDLC._pass_guard = false
+SilentDLC.last_grant_report = SilentDLC.last_grant_report or nil
 
 function SilentDLC:normalize_mode(mode)
 	if mode == self.MODE.SAFE or mode == self.MODE.NORMAL or mode == self.MODE.RISKY then
@@ -198,12 +200,32 @@ function SilentDLC:record_real_ownership(dlc_name, owned)
 	self.real_owned[dlc_name] = owned and true or false
 end
 
+function SilentDLC:is_app_owned(app_id)
+	if not app_id then
+		return false
+	end
+
+	local key = tostring(app_id)
+	if self.owned_by_app[key] ~= nil then
+		return self.owned_by_app[key]
+	end
+
+	local owned = false
+	if SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned then
+		owned = Steam:is_product_owned(app_id) and true or false
+	end
+
+	self.owned_by_app[key] = owned
+	return owned
+end
+
 function SilentDLC:refresh_real_ownership()
 	if not Global or not Global.dlc_manager or not Global.dlc_manager.all_dlc_data then
 		return
 	end
 
 	local is_steam = SystemInfo:distribution() == Idstring("STEAM")
+	self.owned_by_app = {}
 
 	for dlc_name, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
 		if dlc_data.external then
@@ -216,8 +238,7 @@ function SilentDLC:refresh_real_ownership()
 		elseif tostring(dlc_data.app_id) == "218620" then
 			self.real_owned[dlc_name] = true
 		elseif is_steam and Steam and Steam.is_product_owned then
-			-- Always re-query Steam so unlocker verified flag never pollutes this
-			self.real_owned[dlc_name] = Steam:is_product_owned(dlc_data.app_id) and true or false
+			self.real_owned[dlc_name] = self:is_app_owned(dlc_data.app_id)
 		elseif self.real_owned[dlc_name] == nil then
 			self.real_owned[dlc_name] = false
 		end
@@ -250,7 +271,7 @@ function SilentDLC:is_dlc_really_owned(dlc_name)
 	end
 
 	if SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned then
-		local owned = Steam:is_product_owned(dlc_data.app_id) and true or false
+		local owned = self:is_app_owned(dlc_data.app_id)
 		self.real_owned[dlc_name] = owned
 		return owned
 	end
@@ -258,9 +279,9 @@ function SilentDLC:is_dlc_really_owned(dlc_name)
 	return false
 end
 
--- Matches official unlocker README / NetworkPeer outfit verify
+-- Mirrors NetworkPeer outfit verification categories.
 -- TAG: masks, weapons, weapon mods, weapon colors, mask patterns/materials, melee, host DLC job
--- SAFE: outfits, gloves, characters, perk decks, equipment/throwables, SOME unlockable mods
+-- SAFE: outfits, gloves, perk decks, equipment/throwables, SOME unlockable mods
 SilentDLC.TAG_CATEGORIES = {
 	masks = true,
 	materials = true,
@@ -285,8 +306,6 @@ SilentDLC.SAFE_CATEGORIES = {
 	armor_skins = true,
 	projectiles = true,
 	grenades = true,
-	characters = true,
-	character = true,
 	armors = true,
 	deployables = true
 }
@@ -302,6 +321,10 @@ function SilentDLC:normalize_category(category)
 
 	if category == "weapon_skins" then
 		return "weapon_colors"
+	end
+
+	if category == "colors" or category == "mask_colors" then
+		return "materials"
 	end
 
 	if category == "weapons" then
@@ -327,12 +350,7 @@ function SilentDLC:get_item_data(category, item_id)
 	end
 
 	if category == "weapon_mods" then
-		local bm = tweak_data.blackmarket and tweak_data.blackmarket.weapon_mods and tweak_data.blackmarket.weapon_mods[item_id]
-		if bm then
-			return bm
-		end
-
-		return tweak_data.weapon and tweak_data.weapon.factory and tweak_data.weapon.factory.parts and tweak_data.weapon.factory.parts[item_id]
+		return tweak_data.blackmarket and tweak_data.blackmarket.weapon_mods and tweak_data.blackmarket.weapon_mods[item_id]
 	end
 
 	local bucket = tweak_data.blackmarket and tweak_data.blackmarket[category]
@@ -345,7 +363,7 @@ function SilentDLC:item_data_skips_ownership(item_data)
 		return false
 	end
 
-	if item_data.unlocked or item_data.is_a_unlockable or item_data.is_an_unlockable then
+	if item_data.unlocked or item_data.is_a_unlockable or item_data.is_an_unlockable or item_data.skip_cheat_verification then
 		return true
 	end
 
@@ -391,21 +409,11 @@ function SilentDLC:collect_item_dlcs(item_data)
 		return list
 	end
 
-	add(item_data.dlc)
+	add(item_data.dlc or self:resolve_dlc_from_global_value(item_data.global_value))
 
 	if item_data.dlc_list then
 		for _, dlc in pairs(item_data.dlc_list) do
 			add(dlc)
-		end
-	end
-
-	if item_data.global_value then
-		add(self:resolve_dlc_from_global_value(item_data.global_value))
-	end
-
-	if item_data.global_values then
-		for _, gv in pairs(item_data.global_values) do
-			add(self:resolve_dlc_from_global_value(gv))
 		end
 	end
 
@@ -431,9 +439,21 @@ function SilentDLC:dlc_is_risky(dlc)
 	return not self:is_dlc_really_owned(dlc)
 end
 
+function SilentDLC:outfit_dlc_is_risky(dlc)
+	if SystemInfo:distribution() ~= Idstring("STEAM") then
+		return false
+	end
+
+	return self:dlc_is_risky(dlc)
+end
+
 function SilentDLC:item_data_is_risky(item_data)
 	if not item_data then
-		return false
+		return true, nil, "invalid_item"
+	end
+
+	if item_data.unatainable then
+		return true, nil, "unattainable_item"
 	end
 
 	if self:item_data_skips_ownership(item_data) then
@@ -446,33 +466,52 @@ function SilentDLC:item_data_is_risky(item_data)
 	end
 
 	for _, dlc in ipairs(dlc_list) do
-		if self:dlc_is_risky(dlc) then
-			return true, dlc
+		if self:outfit_dlc_is_risky(dlc) then
+			return true, dlc, "unowned_dlc"
 		end
 	end
 
 	return false
 end
 
-function SilentDLC:is_item_risky(category, item_id)
-	if not category or not item_id or item_id == "empty" then
-		return false
+function SilentDLC:verification_result(risky, reason, category, item_id, dlc)
+	return {
+		risky = risky and true or false,
+		reason = reason,
+		category = category,
+		item_id = item_id,
+		dlc = dlc
+	}
+end
+
+function SilentDLC:verify_item(category, item_id)
+	if not category or not item_id or item_id == "empty" or item_id == "" then
+		return self:verification_result(false)
 	end
 
 	local raw = category
 	category = self:normalize_category(category)
 
 	if self.SAFE_CATEGORIES[category] or self.SAFE_CATEGORIES[raw] then
-		return false
+		return self:verification_result(false)
 	end
 
-	-- Only categories that can CHEATER-tag (masks, weapons, mods, melee, colors, materials/patterns)
 	if not self.TAG_CATEGORIES[category] and not self.TAG_CATEGORIES[raw] then
-		return false
+		return self:verification_result(false)
 	end
 
 	local item_data = self:get_item_data(category, item_id)
-	return self:item_data_is_risky(item_data)
+	if category == "masks" and item_data and item_data.name_id == "bm_msk_cheat_error" then
+		return self:verification_result(true, "invalid_item", category, item_id)
+	end
+
+	local risky, dlc, reason = self:item_data_is_risky(item_data)
+	return self:verification_result(risky, reason, category, item_id, dlc)
+end
+
+function SilentDLC:is_item_risky(category, item_id)
+	local result = self:verify_item(category, item_id)
+	return result.risky, result.dlc, result.reason
 end
 
 function SilentDLC:is_item_risky_for_ui(category, item_id)
@@ -506,86 +545,159 @@ end
 
 function SilentDLC:is_weapon_color_risky(color_id)
 	local item_data = self:get_item_data("weapon_colors", color_id)
-	if not item_data then
+	if not item_data or not item_data.is_a_color_skin then
 		return false
 	end
 
-	-- NetworkPeer only checks color skins this way for cosmetics is_a_color_skin
-	-- but paid weapon colors still use dlc/global_value
-	if item_data.is_a_color_skin or item_data.dlc or item_data.global_value then
-		return self:item_data_is_risky(item_data)
-	end
-
-	return false
+	local result = self:verify_item("weapon_colors", color_id)
+	return result.risky, result.dlc, result.reason
 end
 
-function SilentDLC:crafted_weapon_is_risky(crafted)
+function SilentDLC:verify_crafted_weapon(crafted)
 	if not crafted then
-		return false
+		return self:verification_result(false)
 	end
 
-	if self:is_factory_weapon_risky(crafted.factory_id) then
-		return true, "weapon"
+	local weapon_id = crafted.weapon_id
+	if not weapon_id and crafted.factory_id and managers.weapon_factory then
+		weapon_id = managers.weapon_factory:get_weapon_id_by_factory_id(crafted.factory_id)
+	end
+
+	local weapon_result = self:verify_item("weapon", weapon_id)
+	if weapon_result.risky then
+		return weapon_result
 	end
 
 	if crafted.blueprint and managers.weapon_factory then
+		local safe_blueprint = {}
 		local default_bp = managers.weapon_factory:get_default_blueprint_by_factory_id(crafted.factory_id) or {}
+		local cosmetics_id = crafted.cosmetics and crafted.cosmetics.id
+		local skin_bp, is_color_skin = managers.weapon_factory:get_cosmetics_blueprint_by_weapon_id(weapon_id, cosmetics_id)
+
+		for _, part_id in ipairs(default_bp) do
+			safe_blueprint[part_id] = true
+		end
+
+		for _, part_id in ipairs(skin_bp or {}) do
+			safe_blueprint[part_id] = true
+		end
 
 		for _, part_id in ipairs(crafted.blueprint) do
-			if not table.contains(default_bp, part_id) and self:is_weapon_mod_risky(part_id) then
-				return true, "weapon_mods", part_id
+			if not safe_blueprint[part_id] then
+				local part_result = self:verify_item("weapon_mods", part_id)
+				if part_result.risky then
+					return part_result
+				end
+			end
+		end
+
+		if is_color_skin and cosmetics_id then
+			local cosmetics_data = self:get_item_data("weapon_colors", cosmetics_id)
+			if cosmetics_data and cosmetics_data.is_a_color_skin then
+				local color_result = self:verify_item("weapon_colors", cosmetics_id)
+				if color_result.risky then
+					return color_result
+				end
 			end
 		end
 	end
 
-	if crafted.cosmetics and crafted.cosmetics.id and self:is_weapon_color_risky(crafted.cosmetics.id) then
-		return true, "weapon_colors", crafted.cosmetics.id
-	end
-
-	return false
+	return self:verification_result(false)
 end
 
-function SilentDLC:crafted_mask_is_risky(crafted)
+function SilentDLC:crafted_weapon_is_risky(crafted)
+	local result = self:verify_crafted_weapon(crafted)
+	return result.risky, result.category, result.item_id, result.dlc, result.reason
+end
+
+function SilentDLC:verify_crafted_mask(crafted)
 	if not crafted then
-		return false
+		return self:verification_result(false)
 	end
 
-	if self:is_mask_risky(crafted.mask_id) then
-		return true, "masks", crafted.mask_id
+	local mask_result = self:verify_item("masks", crafted.mask_id)
+	if mask_result.risky then
+		return mask_result
 	end
 
 	if crafted.blueprint then
 		local map = {
 			material = "materials",
 			pattern = "textures",
-			color = "colors",
-			color_a = "mask_colors",
-			color_b = "mask_colors"
+			color_a = "materials",
+			color_b = "materials",
+			color_c = "materials"
 		}
+		local mask_data = self:get_item_data("masks", crafted.mask_id)
+		local default_blueprint = mask_data and mask_data.default_blueprint or {}
 
 		for key, cat in pairs(map) do
 			local part = crafted.blueprint[key]
-			if part and part.id and self:is_item_risky(cat, part.id) then
-				return true, cat, part.id
+			if part and part.id and default_blueprint[cat] ~= part.id then
+				local part_result = self:verify_item(cat, part.id)
+				if part_result.risky then
+					return part_result
+				end
 			end
 		end
 	end
 
-	return false
+	return self:verification_result(false)
 end
 
--- True if HOSTING this job can CHEATER-tag you (unowned DLC contract)
-function SilentDLC:is_job_risky_to_host(job_id)
+
+function SilentDLC:crafted_mask_is_risky(crafted)
+	local result = self:verify_crafted_mask(crafted)
+	return result.risky, result.category, result.item_id, result.dlc, result.reason
+end
+
+function SilentDLC:verify_character(character_id)
+	if not character_id or not tweak_data or not tweak_data.blackmarket or not tweak_data.blackmarket.characters then
+		return self:verification_result(false)
+	end
+
+	local character_data = tweak_data.blackmarket.characters[character_id]
+	if not character_data or not character_data.dlc then
+		return self:verification_result(false)
+	end
+
+	local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[character_data.dlc]
+	if not dlc_data or not dlc_data.app_id then
+		return self:verification_result(false)
+	end
+
+	local owned = self:is_dlc_really_owned(character_data.dlc)
+	if SystemInfo:distribution() == Idstring("STEAM") then
+		owned = self:is_app_owned(dlc_data.app_id)
+	end
+
+	if not owned then
+		return self:verification_result(true, "unowned_dlc", "characters", character_id, character_data.dlc)
+	end
+
+	return self:verification_result(false)
+end
+
+function SilentDLC:verify_job_to_host(job_id)
 	if not job_id or not tweak_data or not tweak_data.narrative then
-		return false
+		return self:verification_result(false)
 	end
 
 	local job_tweak = tweak_data.narrative:job_data(job_id)
 	if not job_tweak or not job_tweak.dlc then
-		return false
+		return self:verification_result(false)
 	end
 
-	return self:dlc_is_risky(job_tweak.dlc)
+	if self:dlc_is_risky(job_tweak.dlc) then
+		return self:verification_result(true, "unowned_dlc", "heists", job_id, job_tweak.dlc)
+	end
+
+	return self:verification_result(false)
+end
+
+function SilentDLC:is_job_risky_to_host(job_id)
+	local result = self:verify_job_to_host(job_id)
+	return result.risky, result.dlc, result.reason
 end
 
 function SilentDLC:should_hide_risky_heists()
@@ -606,21 +718,195 @@ function SilentDLC:notify(text)
 end
 
 function SilentDLC:risk_label(category, item_id)
-	local risky, dlc = self:is_item_risky(category, item_id)
-	if not risky then
+	local result = self:verify_item(category, item_id)
+	if not result.risky then
 		return nil
 	end
 
-	if dlc then
-		return "CHEATER TAG if equipped (" .. tostring(dlc) .. ")"
+	if result.dlc then
+		return "CHEATER TAG if equipped (" .. tostring(result.dlc) .. ")"
 	end
 
 	return "CHEATER TAG if equipped"
 end
 
+function SilentDLC:item_display_name(result)
+	if not result or not result.item_id then
+		return "unknown item"
+	end
+
+	local data
+	if result.category == "characters" then
+		data = tweak_data.blackmarket and tweak_data.blackmarket.characters and tweak_data.blackmarket.characters[result.item_id]
+	elseif result.category == "heists" then
+		data = tweak_data.narrative and tweak_data.narrative:job_data(result.item_id)
+	else
+		data = self:get_item_data(result.category, result.item_id)
+	end
+
+	if data and data.name_id and managers and managers.localization then
+		return managers.localization:text(data.name_id)
+	end
+
+	return tostring(result.item_id)
+end
+
+function SilentDLC:dlc_display_name(dlc, fallback)
+	local global_value = tweak_data and tweak_data.lootdrop and tweak_data.lootdrop.global_values and tweak_data.lootdrop.global_values[dlc]
+	local dlc_data = tweak_data and tweak_data.dlc and tweak_data.dlc[dlc]
+	local name_id = global_value and global_value.name_id or dlc_data and dlc_data.name_id
+
+	if name_id and managers and managers.localization then
+		local name = managers.localization:text(name_id)
+		if name and name ~= name_id and not string.find(name, "ERROR:", 1, true) then
+			return name
+		end
+	end
+
+	return fallback or "required DLC"
+end
+
+function SilentDLC:add_preflight_risk(risks, label, result)
+	if result and result.risky then
+		result.label = label
+		table.insert(risks, result)
+	end
+end
+
+function SilentDLC:collect_loadout_risks(include_host_character, job_id)
+	local risks = {}
+	if not managers or not managers.blackmarket then
+		return risks
+	end
+
+	if managers.blackmarket.equipped_primary then
+		self:add_preflight_risk(risks, "Primary", self:verify_crafted_weapon(managers.blackmarket:equipped_primary()))
+	end
+
+	if managers.blackmarket.equipped_secondary then
+		self:add_preflight_risk(risks, "Secondary", self:verify_crafted_weapon(managers.blackmarket:equipped_secondary()))
+	end
+
+	if managers.blackmarket.equipped_mask then
+		self:add_preflight_risk(risks, "Mask", self:verify_crafted_mask(managers.blackmarket:equipped_mask()))
+	end
+
+	if managers.blackmarket.equipped_melee_weapon then
+		local melee_id = managers.blackmarket:equipped_melee_weapon()
+		self:add_preflight_risk(risks, "Melee", self:verify_item("melee_weapons", melee_id))
+	end
+
+	if include_host_character and managers.blackmarket.equipped_character then
+		self:add_preflight_risk(risks, "Host character", self:verify_character(managers.blackmarket:equipped_character()))
+	end
+
+	if job_id then
+		self:add_preflight_risk(risks, "Hosted contract", self:verify_job_to_host(job_id))
+	end
+
+	return risks
+end
+
+function SilentDLC:format_preflight(action, risks)
+	if #risks == 1 and risks[1].category == "heists" then
+		local contract = risks[1]
+		local heist_name = self:item_display_name(contract)
+		return table.concat({
+			"Hosting this heist without owning its DLC can give you the CHEATER tag:",
+			"",
+			heist_name,
+			"Required DLC: " .. self:dlc_display_name(contract.dlc, heist_name .. " DLC")
+		}, "\n")
+	end
+
+	local lines = {
+		tostring(action) .. " with these risks can give you the CHEATER tag:",
+		""
+	}
+
+	for _, result in ipairs(risks) do
+		local detail = ""
+		if result.category == "heists" then
+			local heist_name = self:item_display_name(result)
+			detail = " (unowned heist DLC: " .. self:dlc_display_name(result.dlc, heist_name .. " DLC") .. ")"
+		elseif result.dlc then
+			detail = " (unowned DLC: " .. self:dlc_display_name(result.dlc) .. ")"
+		elseif result.reason then
+			detail = " (" .. tostring(result.reason) .. ")"
+		end
+		table.insert(lines, "• " .. tostring(result.label or "Item") .. ": " .. self:item_display_name(result) .. detail)
+	end
+
+	return table.concat(lines, "\n")
+end
+
+function SilentDLC:guard_multiplayer(action, include_host_character, job_id, on_allow)
+	if self._pass_guard or self:is_risky_mode() then
+		return "allow"
+	end
+
+	local risks = self:collect_loadout_risks(include_host_character, job_id)
+	if #risks == 0 then
+		return "allow"
+	end
+
+	return self:gate_risky(self:format_preflight(action, risks), on_allow)
+end
+
+function SilentDLC:begin_grant_report()
+	self.last_grant_report = {
+		added = 0,
+		repaired = 0,
+		skipped = 0,
+		errors = {}
+	}
+end
+
+function SilentDLC:record_grant(kind, detail)
+	self.last_grant_report = self.last_grant_report or {
+		added = 0,
+		repaired = 0,
+		skipped = 0,
+		errors = {}
+	}
+
+	if kind == "added" or kind == "repaired" or kind == "skipped" then
+		self.last_grant_report[kind] = self.last_grant_report[kind] + 1
+	end
+
+	if detail and #self.last_grant_report.errors < 20 then
+		table.insert(self.last_grant_report.errors, tostring(detail))
+	end
+end
+
+function SilentDLC:grant_report_text()
+	local report = self.last_grant_report
+	if not report then
+		return "No package grant has run in this session."
+	end
+
+	return "Package grant: " .. tostring(report.added) .. " added, " .. tostring(report.repaired) .. " repaired, " .. tostring(report.skipped) .. " skipped. See the SuperBLT log for details."
+end
+
+function SilentDLC:finish_grant_report()
+	local report = self.last_grant_report
+	if not report then
+		return
+	end
+
+	log("[SilentDLC] " .. self:grant_report_text())
+	for _, detail in ipairs(report.errors) do
+		log("[SilentDLC] package detail: " .. detail)
+	end
+end
+
 -- Resolve risk from raw BlackMarketGui slot data
 function SilentDLC:slot_data_is_risky(data)
 	if not data or self:is_all_mode() then
+		return false
+	end
+
+	if data.empty_slot or data.locked_slot then
 		return false
 	end
 
@@ -643,6 +929,8 @@ function SilentDLC:slot_data_is_risky(data)
 			if crafted then
 				return self:crafted_weapon_is_risky(crafted)
 			end
+
+			return false
 		end
 
 		-- Fallback: name as weapon id
@@ -659,6 +947,10 @@ function SilentDLC:slot_data_is_risky(data)
 		if crafted and crafted.mask_id then
 			return self:crafted_mask_is_risky(crafted)
 		end
+	end
+
+	if category == "characters" or category == "character" then
+		return self:verify_character(name).risky
 	end
 
 	if category == "melee_weapons" then

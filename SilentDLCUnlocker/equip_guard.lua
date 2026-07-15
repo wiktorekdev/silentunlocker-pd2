@@ -67,16 +67,39 @@ function BlackMarketManager:equip_melee_weapon(melee_weapon_id, skip_outfit)
 	return old_equip_melee(self, melee_weapon_id, skip_outfit)
 end
 
+local old_equip_character = BlackMarketManager.equip_character
+if old_equip_character then
+	function BlackMarketManager:equip_character(character_name)
+		if SilentDLC._pass_guard then
+			return old_equip_character(self, character_name)
+		end
+
+		local is_hosting = managers.network and managers.network:session() and Network:is_server()
+		local result = SilentDLC:verify_character(character_name)
+		if is_hosting and result.risky then
+			local gate = SilentDLC:gate_risky("Changing to this unowned DLC character while hosting can give you the CHEATER tag.", function()
+				old_equip_character(self, character_name)
+			end)
+
+			if gate ~= "allow" then
+				return false
+			end
+		end
+
+		return old_equip_character(self, character_name)
+	end
+end
+
 local old_buy_and_modify = BlackMarketManager.buy_and_modify_weapon
 if old_buy_and_modify then
-	function BlackMarketManager:buy_and_modify_weapon(category, slot, global_value, part_id, free_of_charge, no_consume)
+	function BlackMarketManager:buy_and_modify_weapon(category, slot, global_value, part_id, free_of_charge, no_consume, loading)
 		if SilentDLC._pass_guard then
-			return old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume)
+			return old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume, loading)
 		end
 
 		if SilentDLC:is_weapon_mod_risky(part_id) then
 			local result = SilentDLC:gate_risky("Attaching this would give CHEATER TAG (DLC weapon mod).", function()
-				old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume)
+				old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume, loading)
 			end)
 
 			if result ~= "allow" then
@@ -84,6 +107,6 @@ if old_buy_and_modify then
 			end
 		end
 
-		return old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume)
+		return old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume, loading)
 	end
 end
