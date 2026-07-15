@@ -28,3 +28,6 @@ jobs:
 
       - name: Validate release metadata
         run: python scripts/validate_release.py
+
+      - name: Build SuperBLT-compatible release archive
+        run: python scripts/build_release.py

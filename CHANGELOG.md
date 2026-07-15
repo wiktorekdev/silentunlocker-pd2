@@ -4,6 +4,8 @@ Notable changes to Silent DLC Unlocker are documented here. The project follows 
 
 ## Unreleased
 
+- Added a deterministic SuperBLT-compatible release builder and CI archive validation.
+
 ## 1.5.0 - 2026-07-15
 
 - Added a new shushing-dog project logo.

@@ -36,7 +36,10 @@ The repository's GitHub Actions workflow compiles every Lua file and checks the 
 find SilentDLCUnlocker -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
 lua5.1 tests/verifier_spec.lua
 python scripts/validate_release.py
+python scripts/build_release.py
 ```
+
+Always publish the ZIP produced by `scripts/build_release.py`. SuperBLT reads raw ZIP local headers and requires forward-slash entry paths; archives produced by PowerShell `Compress-Archive` can download successfully but fail during extraction.
 
 PAYDAY 2 APIs are only available inside the game, so syntax checks cannot replace a manual smoke test. At minimum, verify that the mod loads, its options menu opens, settings persist after restart, and the three modes handle one known risky item correctly.
 
