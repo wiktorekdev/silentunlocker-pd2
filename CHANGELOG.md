@@ -4,7 +4,22 @@ Notable changes to Silent DLC Unlocker are documented here. The project follows 
 
 ## Unreleased
 
-- Added a deterministic SuperBLT-compatible release builder and CI archive validation.
+## 1.5.1 - 2026-07-21
+
+### Fixed
+
+- Safe mode blocks now show a modal dialog explaining which items caused the block, instead of only a chat-feed line that was easy to miss ("can't connect" from the menu with no visible reason).
+- Mask blueprints are now scanned slot-by-slot exactly like the game's own peer verifier: unknown blueprint slots (for example legacy `color` entries from pre-rework saves) are flagged as risky, because remote clients fail their verification and tag or kick the wearer.
+- Restored the 1.4.1 inventory-grid rescan that kept CHEATER marks correct after menu grid rebuilds. It now hooks the current game's `BlackMarketGuiTabItem:select_slot` (the old `BlackMarketGui.select_slot` no longer exists) and also clears stale marks on reused slots.
+
+### Added
+
+- A deterministic SuperBLT-compatible release builder and CI archive validation, plus a local `lupa`-based Lua check runner for Windows development.
+- A disconnect notice: when you are kicked while wearing CHEATER-risk items, a dialog explains that the host's game detected unowned DLC and auto-kicked you (PAYDAY 2 re-verifies real platform ownership on every client, including asynchronously after the Steam ticket check completes minutes into a heist).
+
+### Documentation
+
+- Troubleshooting now covers mid-game disconnects caused by remote ownership checks and host auto-kick.
 
 ## 1.5.0 - 2026-07-15
 

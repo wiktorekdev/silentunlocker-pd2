@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.5.0-3b82f6?style=flat-square" alt="Version 1.5.0" />
+  <img src="https://img.shields.io/badge/version-1.5.1-3b82f6?style=flat-square" alt="Version 1.5.1" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT license" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest"><img src="https://img.shields.io/github/downloads/wiktorekdev/silentunlocker-pd2/total?style=flat-square&color=0ea5e9" alt="Total downloads" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="GitHub stars" /></a>
@@ -103,6 +103,14 @@ Before multiplayer entry, Safe and Normal modes scan the complete equipped prima
 - Conflicting unlocker mods can leave inventory state inconsistent until they are removed and the game is restarted.
 
 ## Troubleshooting
+
+**The game disconnects a few minutes into an online heist**
+
+Other players' games always check your equipped items against your real platform ownership, no matter what any local mod reports. PAYDAY 2 repeats this check when the background Steam verification finishes, often minutes into a game, and lobbies kick detected cheaters by default. The mod cannot change what remote clients see; it can only stop you from bringing risky items online. Safe mode blocks joining or hosting with flagged items, and version 1.5.1 explains both the block and the kick with a dialog. To play online without disconnects, unequip the flagged items, host your own lobby, or play offline.
+
+**Joining or hosting from the menu does nothing**
+
+Safe mode is blocking the action because your current loadout contains CHEATER-risk items. A dialog names the items; unequip them or change the mode in Mod Options.
 
 **The mod does not appear in Mod Options**
 

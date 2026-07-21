@@ -4,7 +4,7 @@
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
 	"image": "logo.png",
-	"version": "1.5.0",
+	"version": "1.5.1",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [
@@ -51,6 +51,10 @@
 		{
 			"hook_id": "lib/managers/menumanager",
 			"script_path": "menu.lua"
+		},
+		{
+			"hook_id": "lib/network/base/basenetworksession",
+			"script_path": "kick_notice.lua"
 		},
 		{
 			"hook_id": "lib/network/matchmaking/networkmatchmakingsteam",

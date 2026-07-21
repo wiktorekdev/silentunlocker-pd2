@@ -182,3 +182,43 @@ if BlackMarketGui and BlackMarketGui.update_info_text then
 		append_info(self, msg)
 	end)
 end
+
+-- ---------------------------------------------------------------------------
+-- Grid rescan (restored from 1.4.1 with clear semantics)
+-- ----------------------------------------------------------------------------
+-- Slot init / texture / refresh hooks miss marks when the menu grid is
+-- rebuilt or when a slot's data is swapped in place. Re-evaluate every slot
+-- of the active tab whenever the selection moves; apply_slot_mark also
+-- clears stale marks on safe or reused slots.
+-- ---------------------------------------------------------------------------
+local function rescan_tab_slots(tab)
+	if not tab or not tab._slots then
+		return
+	end
+
+	for _, slot in ipairs(tab._slots) do
+		if slot and slot._data then
+			apply_slot_mark(slot)
+		end
+	end
+end
+
+-- Current game: slot selection lives on the tab item
+if BlackMarketGuiTabItem and BlackMarketGuiTabItem.select_slot then
+	Hooks:PostHook(BlackMarketGuiTabItem, "select_slot", "SilentDLC_TabSelectMark", function(self, ...)
+		rescan_tab_slots(self)
+	end)
+end
+
+-- Older game builds: selection lived on BlackMarketGui itself
+if BlackMarketGui and BlackMarketGui.select_slot then
+	Hooks:PostHook(BlackMarketGui, "select_slot", "SilentDLC_SelectMark", function(self, ...)
+		if not self._tabs then
+			return
+		end
+
+		for _, tab in pairs(self._tabs) do
+			rescan_tab_slots(tab)
+		end
+	end)
+end

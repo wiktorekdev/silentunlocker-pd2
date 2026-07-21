@@ -199,6 +199,13 @@ expect_risky(SilentDLC:verify_crafted_mask({
 	}
 }), "unowned_dlc")
 
+expect_risky(SilentDLC:verify_crafted_mask({
+	mask_id = "mask_owned",
+	blueprint = {
+		color = { id = "legacy_color" }
+	}
+}), "invalid_item")
+
 expect_risky(SilentDLC:verify_character("character_unowned"), "unowned_dlc")
 expect_risky(SilentDLC:verify_job_to_host("job_unowned"), "unowned_dlc")
 

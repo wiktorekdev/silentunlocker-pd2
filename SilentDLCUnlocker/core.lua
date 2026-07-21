@@ -164,6 +164,29 @@ function SilentDLC:confirm(title, text, yes_clbk)
 	self:notify(title .. ": " .. text .. " (no UI to confirm)")
 end
 
+-- Modal info dialog with a chat-feed fallback.
+function SilentDLC:alert(title, text)
+	title = title or "Silent DLC Unlocker"
+	text = text or ""
+
+	if managers and managers.system_menu then
+		managers.system_menu:show({
+			title = title,
+			text = text,
+			button_list = {
+				{
+					text = "OK",
+					is_cancel_button = true
+				}
+			}
+		})
+
+		return
+	end
+
+	self:notify(title .. ": " .. text)
+end
+
 -- Gate a CHEATER-risk action by mode.
 -- returns: "allow" | "deny" | "pending"
 function SilentDLC:gate_risky(message, on_allow)
@@ -173,6 +196,7 @@ function SilentDLC:gate_risky(message, on_allow)
 
 	if self:is_safe_mode() then
 		self:notify("Blocked: " .. tostring(message))
+		self:alert("Blocked by Safe mode", tostring(message) .. "\n\nSafe mode blocks CHEATER-risk actions so other players' games cannot detect you. Unequip the listed items or pick another mode in Mod Options - Silent DLC Unlocker.")
 
 		return "deny"
 	end
@@ -621,7 +645,10 @@ function SilentDLC:verify_crafted_mask(crafted)
 	end
 
 	if crafted.blueprint then
-		local map = {
+		-- Mirrors the game's mask_blueprint_lookup. Slots the game does not
+		-- know (e.g. legacy "color" entries from old saves) fail the remote
+		-- peer verification and must be treated as risky here as well.
+		local lookup = {
 			material = "materials",
 			pattern = "textures",
 			color_a = "materials",
@@ -631,12 +658,19 @@ function SilentDLC:verify_crafted_mask(crafted)
 		local mask_data = self:get_item_data("masks", crafted.mask_id)
 		local default_blueprint = mask_data and mask_data.default_blueprint or {}
 
-		for key, cat in pairs(map) do
-			local part = crafted.blueprint[key]
-			if part and part.id and default_blueprint[cat] ~= part.id then
-				local part_result = self:verify_item(cat, part.id)
-				if part_result.risky then
-					return part_result
+		for key, part in pairs(crafted.blueprint) do
+			if part and part.id then
+				local cat = lookup[key]
+
+				if not cat then
+					return self:verification_result(true, "invalid_item", "masks", part.id)
+				end
+
+				if default_blueprint[cat] ~= part.id then
+					local part_result = self:verify_item(cat, part.id)
+					if part_result.risky then
+						return part_result
+					end
 				end
 			end
 		end
