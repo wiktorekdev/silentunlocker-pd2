@@ -4,6 +4,20 @@ Notable changes to Silent DLC Unlocker are documented here. The project follows 
 
 ## Unreleased
 
+## 1.5.2 - 2026-08-31
+
+### Fixed
+
+- Detect DLC color skins through their DLC ownership data instead of treating unlockable skins as safe.
+- Preserve stock icon tints after a BlackMarket texture finishes loading.
+- Do not show the DLC-risk kick notice for authentication failures; message 0 now makes clear that manual kicks are also possible.
+- Remove two obsolete hook targets and the unused Epic matchmaking wrapper.
+- Keep `_check_dlc_data` results out of the real-ownership cache.
+
+### Changed
+
+- Add TDVS-aware Epic ownership checks. Epic behavior is not tested in-game.
+
 ## 1.5.1 - 2026-07-21
 
 ### Fixed
@@ -36,7 +50,7 @@ Notable changes to Silent DLC Unlocker are documented here. The project follows 
 - Verify all three mask color channels through the same category mapping used by the game.
 - Preserve the `loading` argument when guarding weapon modifications.
 - Stop clearing DLC package state every session, which could grant duplicate inventory quantities.
-- Load the Crime.Net marker hook from the exact `crimenetgui` script.
+- Load the Crime.Net marker hook from `crimenetmanager`.
 
 ### Added
 

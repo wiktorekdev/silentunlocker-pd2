@@ -14,7 +14,7 @@ local function clear_slot_mark(slot)
 	slot._silent_dlc_risky = nil
 
 	if alive(slot._bitmap) then
-		slot._bitmap:set_color(slot._silent_dlc_bitmap_color or Color.white)
+		slot._bitmap:set_color(slot._post_load_color or (slot._data and slot._data.bitmap_color) or Color.white)
 	end
 
 	if alive(slot._akimbo_bitmap) then
@@ -107,16 +107,7 @@ end)
 -- Bitmap often loads after init — re-tint
 if BlackMarketGuiSlotItem.texture_loaded_clbk then
 	Hooks:PostHook(BlackMarketGuiSlotItem, "texture_loaded_clbk", "SilentDLC_SlotMarkTexture", function(self, ...)
-		if self._silent_dlc_risky then
-			if alive(self._bitmap) then
-				self._bitmap:set_color(RISK_COLOR)
-			end
-			if alive(self._akimbo_bitmap) then
-				self._akimbo_bitmap:set_color(RISK_COLOR)
-			end
-		else
-			apply_slot_mark(self)
-		end
+		apply_slot_mark(self)
 	end)
 end
 

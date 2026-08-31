@@ -14,6 +14,9 @@ end
 -- ============================================================================
 Hooks:PostHook(BaseNetworkSession, "on_peer_kicked", "SilentDLC_KickNotice", function(self, peer, peer_id, message_id)
 	local ok, err = pcall(function()
+		if message_id == 2 or message_id == 3 then
+			return
+		end
 		local session = managers.network and managers.network:session()
 		local local_peer = session and session:local_peer()
 
@@ -27,7 +30,7 @@ Hooks:PostHook(BaseNetworkSession, "on_peer_kicked", "SilentDLC_KickNotice", fun
 			return
 		end
 
-		SilentDLC:alert("Disconnected", "You were kicked while using CHEATER-risk items. The host's game detected unowned DLC and removed you; this can happen a few minutes into a game when the ownership re-check finishes.\n\nTo stay connected: play offline, host your own lobby, or unequip the flagged items.\n\n" .. SilentDLC:format_preflight("Playing", risks))
+		SilentDLC:alert("Disconnected", "You were kicked while using CHEATER-risk items. You may have been auto-kicked after the host's ownership re-check; hosts can also kick manually.\n\nTo stay connected: play offline, host your own lobby, or unequip the flagged items.\n\n" .. SilentDLC:format_preflight("Playing", risks))
 	end)
 
 	if not ok then

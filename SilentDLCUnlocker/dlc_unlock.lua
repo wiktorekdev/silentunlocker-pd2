@@ -47,11 +47,6 @@ local function wrap_check(class_name)
 			really_owned = ok and result and true or false
 		end
 
-		local dlc_name = dlc_name_from_data(dlc_data)
-		if dlc_name then
-			SilentDLC:record_real_ownership(dlc_name, really_owned)
-		end
-
 		return true
 	end
 end

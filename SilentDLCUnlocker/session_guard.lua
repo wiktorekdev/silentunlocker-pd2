@@ -59,4 +59,3 @@ local function wrap_matchmaking(class_name)
 end
 
 wrap_matchmaking("NetworkMatchMakingSTEAM")
-wrap_matchmaking("NetworkMatchMakingEPIC")

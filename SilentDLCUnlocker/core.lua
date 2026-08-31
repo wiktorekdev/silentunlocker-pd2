@@ -464,11 +464,20 @@ function SilentDLC:dlc_is_risky(dlc)
 end
 
 function SilentDLC:outfit_dlc_is_risky(dlc)
-	if SystemInfo:distribution() ~= Idstring("STEAM") then
-		return false
+	if SystemInfo:distribution() == Idstring("STEAM") then
+		return self:dlc_is_risky(dlc)
 	end
 
-	return self:dlc_is_risky(dlc)
+	if TDVS and TDVS.should_use and TDVS:should_use() and TDVS.available and TDVS:available() then
+		local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc]
+		if not dlc_data or dlc_data.external or not dlc_data.epic_id then
+			return false
+		end
+
+		return not Distribution:is_product_owned(dlc_data.epic_id)
+	end
+
+	return false
 end
 
 function SilentDLC:item_data_is_risky(item_data)
@@ -573,8 +582,15 @@ function SilentDLC:is_weapon_color_risky(color_id)
 		return false
 	end
 
-	local result = self:verify_item("weapon_colors", color_id)
-	return result.risky, result.dlc, result.reason
+	local risky, dlc = false, nil
+	for _, candidate in ipairs(self:collect_item_dlcs(item_data)) do
+		if self:outfit_dlc_is_risky(candidate) then
+			risky, dlc = true, candidate
+			break
+		end
+	end
+
+	return risky, dlc, risky and "unowned_dlc" or nil
 end
 
 function SilentDLC:verify_crafted_weapon(crafted)
@@ -618,9 +634,9 @@ function SilentDLC:verify_crafted_weapon(crafted)
 		if is_color_skin and cosmetics_id then
 			local cosmetics_data = self:get_item_data("weapon_colors", cosmetics_id)
 			if cosmetics_data and cosmetics_data.is_a_color_skin then
-				local color_result = self:verify_item("weapon_colors", cosmetics_id)
-				if color_result.risky then
-					return color_result
+				local risky, dlc, reason = self:is_weapon_color_risky(cosmetics_id)
+				if risky then
+					return self:verification_result(true, reason, "weapon_colors", cosmetics_id, dlc)
 				end
 			end
 		end
