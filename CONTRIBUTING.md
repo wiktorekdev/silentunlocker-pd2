@@ -17,9 +17,6 @@ Run before submitting:
 
 ```sh
 find SilentDLCUnlocker -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
-lua5.1 tests/verifier_spec.lua
-python scripts/validate_release.py
-python scripts/build_release.py
 ```
 
-Use the ZIP from `build_release.py`; PowerShell's `Compress-Archive` is not compatible with SuperBLT's extractor.
+Before publishing, make sure the ZIP contains one `SilentDLCUnlocker/` folder and that the mod loads in-game.
