@@ -1,6 +1,10 @@
 # Silent DLC Unlocker
 
-<p align="center"><img src="SilentDLCUnlocker/logo.png" alt="Silent DLC Unlocker" width="260" /></p>
+<p align="center">
+  <img src="SilentDLCUnlocker/logo.png" alt="Silent DLC Unlocker" width="360" />
+</p>
+
+<p align="center">A PAYDAY 2 SuperBLT mod for unlocking DLC locally, with multiplayer warnings and safety controls.</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.5.2-3b82f6?style=flat-square" alt="Version 1.5.2" />
@@ -9,42 +13,47 @@
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="Stars" /></a>
 </p>
 
-Silent DLC Unlocker unlocks PAYDAY 2 content locally and helps you avoid loadouts or contracts that the game may flag in multiplayer.
+<p align="center"><img src="preview.png" alt="Silent DLC Unlocker preview" width="900" /></p>
 
-## What it does
+## Features
 
-- Unlocks DLC locally.
-- Marks and scans equipment with a CHEATER-tag risk.
+- Unlocks PAYDAY 2 DLC locally.
+- Separates unlocked content from real platform ownership.
+- Warns about equipment and contracts that may trigger the in-game **CHEATER** tag.
 - Checks before joining or hosting, with Safe, Normal, and Risky modes.
-- Tracks real ownership separately from unlocked content.
-- Warns about risky contracts and can hide them from Crime.Net.
+- Marks risky contracts and can hide them from Crime.Net.
 
-It cannot make another player's game believe you own DLC. Steam results are checked against the game's ownership APIs. Epic results depend on TDVS being available and need in-game verification.
+> [!WARNING]
+> Unlocking content locally does not make Steam or Epic report that you own it. Other players may still flag unowned DLC. Use it at your own risk.
 
-## Install
+## Installation
 
-1. Install the 64-bit [SuperBLT](https://modworkshop.net/mod/58342) release for current PAYDAY 2.
-2. Extract the release so `mod.txt` is at `PAYDAY 2/mods/SilentDLCUnlocker/mod.txt`.
+Requires [SuperBLT](https://modworkshop.net/mod/58342).
+
+1. Download `SilentDLCUnlocker.zip` from the [latest release](https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest).
+2. Extract it into `PAYDAY 2/mods/` so `mod.txt` is at `mods/SilentDLCUnlocker/mod.txt`.
 3. Remove other DLC unlockers, then start the game.
 
 ## Modes
 
-| Mode | Behaviour |
+Open **Options → Mod Options → Silent DLC Unlocker**.
+
+| Mode | Risky equipment and contracts |
 | --- | --- |
-| Safe | Blocks risky equipment and contracts. |
-| Normal | Shows the risk and asks before continuing. |
-| Risky | Allows everything without warnings. |
+| **Safe** | Blocked |
+| **Normal** | Confirm before continuing |
+| **Risky** | Allowed without warnings |
 
-Normal is the default. Use Safe when joining public lobbies.
+Normal is the default. Safe is the sensible choice for public lobbies.
 
-## If something goes wrong
+## Multiplayer
 
-- If the mod is missing from Mod Options, check that SuperBLT loaded and there is no extra folder level.
-- If an item is marked incorrectly, open an issue with the platform, item, DLC, selected mode, and relevant SuperBLT log lines.
-- A kick is not proof that this mod caused it: hosts can kick manually and authentication failures use separate messages.
+The mod cannot change what another player's game sees. It can only warn or stop you before you take a risky loadout or contract online. Steam ownership is checked against the game's APIs; Epic/TDVS behavior is not tested in-game.
 
-## Development
+If something is marked incorrectly, [open an issue](https://github.com/wiktorekdev/silentunlocker-pd2/issues) with the item, DLC, platform, selected mode, and relevant SuperBLT log lines.
+
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Release history is in [CHANGELOG.md](CHANGELOG.md).
 
-MIT licensed. Inspired by [DLC-Unlocker-PD2](https://github.com/pd2-stuff/DLC-Unlocker-PD2).
+Inspired by [DLC-Unlocker-PD2](https://github.com/pd2-stuff/DLC-Unlocker-PD2). Released under the [MIT License](LICENSE).
