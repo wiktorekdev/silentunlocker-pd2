@@ -7,10 +7,10 @@
 <p align="center">A PAYDAY 2 SuperBLT mod for unlocking DLC locally, with multiplayer warnings and safety controls.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.5.2-3b82f6?style=flat-square" alt="Version 1.5.2" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT license" /></a>
-  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest"><img src="https://img.shields.io/github/downloads/wiktorekdev/silentunlocker-pd2/total?style=flat-square&color=0ea5e9" alt="Downloads" /></a>
-  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat-square&color=f59e0b" alt="Stars" /></a>
+  <img src="https://img.shields.io/badge/version-1.5.2-3b82f6?style=flat" alt="Version 1.5.2" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat" alt="MIT license" /></a>
+  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest"><img src="https://img.shields.io/github/downloads/wiktorekdev/silentunlocker-pd2/total?style=flat&color=0ea5e9" alt="Downloads" /></a>
+  <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat&color=f59e0b" alt="Stars" /></a>
 </p>
 
 <p align="center"><img src="preview.png" alt="Silent DLC Unlocker preview" width="900" /></p>
