@@ -1,10 +1,10 @@
 {
 	"name": "Silent DLC Unlocker",
-	"description": "Full DLC unlock. Modes: Safe (block) / Normal (confirm) / Risky (free). Crime.Net tools.",
+	"description": "Local DLC unlock with progression preserved. Online: Safe (block) / Normal (confirm) / Risky (allow). Offline equip is unrestricted. Crime.Net tools.",
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
 	"image": "logo.png",
-	"version": "1.5.2",
+	"version": "1.6.0",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [
@@ -16,6 +16,10 @@
 		}
 	],
 	"hooks": [
+		{
+			"hook_id": "lib/managers/achievmentmanager",
+			"script_path": "progression_repair.lua"
+		},
 		{
 			"hook_id": "lib/managers/dlcmanager",
 			"script_path": "dlc_unlock.lua"

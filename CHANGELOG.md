@@ -2,7 +2,27 @@
 
 Notable changes to Silent DLC Unlocker are documented here. The project follows [Semantic Versioning](https://semver.org/) where practical.
 
-## Unreleased
+## 1.6.0 - 2026-10-04
+
+### Fixed
+
+- Preserve stock achievement, milestone, and parent-package unlock conditions.
+- Repair unearned achievement and milestone rewards saved by older versions, including inventory, installed weapon parts, masks, cosmetics, and saved profiles. Wait for a successful achievement fetch, preserve alternative unlock sources, and write a recovery snapshot before making changes. Addresses #7, including Tombstone Slug.
+- Respect level requirements when granting package upgrades; remove premature grants only from the affected package identifier.
+- Check the displayed shop weapon instead of the purchase destination's crafted weapon when marking DLC risk.
+- Persist unfinished loot grants and retry missing data or failed additions without repeating completed quantities or rerolling random rewards.
+- Restore icon colors only where the mod applied its own tint; preserve original alpha, asynchronously loaded colors, and untouched safe slots.
+
+### Changed
+
+- Allow equipping items and attaching weapon parts offline in every mode; retain multiplayer preflight and online equipment protection.
+- Show the affected item or component and localized DLC name in equipment warnings, with wording that describes a possible CHEATER tag.
+- Separate platform ownership queries from local DLC verification flags, reuse ownership caches during automatic refreshes, and force a new query through Refresh ownership.
+- Remove unused helpers and ownership-check results while retaining old settings migration and platform-check side effects.
+
+### Packaging
+
+- Restore a standalone release builder with a ZIP-header and CRC check for SuperBLT. No CI or test suite is included.
 
 ## 1.5.2 - 2026-08-31
 

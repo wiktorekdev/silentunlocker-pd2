@@ -9,9 +9,9 @@ Hooks:Add("LocalizationManagerPostInit", "SilentDLC_Localization", function(loc)
 		silent_dlc_menu_title = "Silent DLC Unlocker",
 		silent_dlc_menu_desc = "Safe / Normal / Risky modes and Crime.Net filters",
 		silent_dlc_mode_title = "Mode",
-		silent_dlc_mode_desc = "Safe blocks risk | Normal asks to confirm | Risky no limits",
-		silent_dlc_mode_safe = "Safe (block risk)",
-		silent_dlc_mode_normal = "Normal (confirm popups, default)",
+		silent_dlc_mode_desc = "Online: Safe blocks risk | Normal confirms | Risky allows. Offline equip is unrestricted.",
+		silent_dlc_mode_safe = "Safe (block online risk)",
+		silent_dlc_mode_normal = "Normal (confirm online risk, default)",
 		silent_dlc_mode_risky = "Risky (no limits)",
 		silent_dlc_hide_jobs_title = "Hide risky heists on Crime.Net",
 		silent_dlc_hide_jobs_desc = "Do not show unowned DLC heist pins on the Crime.Net map (host pool)",
@@ -40,7 +40,7 @@ Hooks:Add("MenuManagerInitialize", "SilentDLC_MenuInit", function(menu_manager)
 	end
 
 	MenuCallbackHandler.silent_dlc_refresh_ownership = function(self, item)
-		SilentDLC:refresh_real_ownership()
+		SilentDLC:refresh_real_ownership(true)
 		SilentDLC:notify("Ownership refreshed.")
 	end
 

@@ -20,3 +20,15 @@ find SilentDLCUnlocker -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
 ```
 
 Before publishing, make sure the ZIP contains one `SilentDLCUnlocker/` folder and that the mod loads in-game.
+
+Build a ZIP with SuperBLT-compatible local headers:
+
+```sh
+python3 scripts/build_release.py
+```
+
+To check an existing archive without rebuilding it:
+
+```sh
+python3 scripts/build_release.py --check SilentDLCUnlocker.zip
+```

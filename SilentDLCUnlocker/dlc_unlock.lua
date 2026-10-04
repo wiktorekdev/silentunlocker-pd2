@@ -2,6 +2,10 @@ if not SilentDLC then
 	dofile(ModPath .. "core.lua")
 end
 
+if not SilentDLC.repair_earned_rewards then
+	dofile(ModPath .. "progression_repair.lua")
+end
+
 -- ============================================================================
 -- Why stock unlockers miss content
 -- ----------------------------------------------------------------------------
@@ -10,20 +14,6 @@ end
 -- Package re-grant must skip loot drops whose blackmarket entry is missing
 -- (causes: attempt to index local 'entry' (a nil value) @ dlcmanager.lua:491).
 -- ============================================================================
-
-local function dlc_name_from_data(check_data)
-	if not Global or not Global.dlc_manager or not Global.dlc_manager.all_dlc_data then
-		return nil
-	end
-
-	for dlc_name, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
-		if dlc_data == check_data then
-			return dlc_name
-		end
-	end
-
-	return nil
-end
 
 local function wrap_check(class_name)
 	local class_table = _G[class_name]
@@ -40,11 +30,10 @@ local function wrap_check(class_name)
 	local old_check = class_table._check_dlc_data
 
 	class_table._check_dlc_data = function(self, dlc_data)
-		local really_owned = false
-
 		if old_check then
-			local ok, result = pcall(old_check, self, dlc_data)
-			really_owned = ok and result and true or false
+			-- Preserve any platform-check side effects; its return value does
+			-- not represent real ownership after other unlocker hooks run.
+			pcall(old_check, self, dlc_data)
 		end
 
 		return true
@@ -60,15 +49,7 @@ local function force_all_verified()
 		return
 	end
 
-	for dlc_name, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
-		if dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
-			SilentDLC:record_real_ownership(dlc_name, true)
-		elseif SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned and dlc_data.app_id then
-			SilentDLC:record_real_ownership(dlc_name, SilentDLC:is_app_owned(dlc_data.app_id))
-		elseif SilentDLC.real_owned[dlc_name] == nil then
-			SilentDLC:record_real_ownership(dlc_name, false)
-		end
-
+	for _, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
 		dlc_data.verified = true
 	end
 end
@@ -79,17 +60,27 @@ local function force_unlock_api()
 	end
 
 	SilentDLC._unlock_api_hooked = true
+	local old_has_dlc = GenericDLCManager.has_dlc
 
 	function GenericDLCManager:is_dlc_unlocked(dlc)
-		return true
+		local data = tweak_data and tweak_data.dlc and tweak_data.dlc[dlc]
+		return data and data.free or self:has_dlc(dlc)
 	end
 
 	function GenericDLCManager:has_dlc(dlc)
+		local data = tweak_data and tweak_data.dlc and tweak_data.dlc[dlc]
+		-- DLC packages also contain earned rewards. Keep the stock predicates
+		-- (including DLC-and-achievement / DLC-or-achievement combinations).
+		if data and (data.achievement_id or data.milestone_id or data.parent_dlc or data.dlc == "has_stat") then
+			return old_has_dlc(self, dlc)
+		end
+
 		return true
 	end
 
 	function GenericDLCManager:is_global_value_unlocked(global_value)
-		return true
+		local dlc = self:global_value_to_dlc(global_value)
+		return not dlc or self:is_dlc_unlocked(dlc)
 	end
 
 	if GenericDLCManager.has_all_dlcs then
@@ -130,7 +121,7 @@ local function blackmarket_entry(type_items, item_entry)
 	return bucket[item_entry]
 end
 
-local function safe_add_inventory(global_value, type_items, item_entry, amount, kind)
+local function safe_add_inventory(global_value, type_items, item_entry, amount, kind, progress)
 	local item_path = tostring(type_items) .. "/" .. tostring(item_entry)
 	if not managers.blackmarket then
 		SilentDLC:record_grant("skipped", item_path .. " - BlackMarketManager unavailable")
@@ -153,9 +144,54 @@ local function safe_add_inventory(global_value, type_items, item_entry, amount, 
 		end
 
 		SilentDLC:record_grant(kind or "added")
+		if progress then
+			progress.remaining = progress.remaining - 1
+		end
 	end
 
 	return true
+end
+
+local function grant_pending_drop(drop)
+	local type_items, item_entry = drop.type_items, drop.item_entry
+	local methods = {
+		armor_skins = "on_aquired_armor_skin",
+		player_styles = "on_aquired_player_style",
+		suit_variations = "on_aquired_suit_variation",
+		gloves = "on_aquired_glove_id"
+	}
+	local method = methods[type_items]
+	if method then
+		if not managers.blackmarket or not managers.blackmarket[method] then
+			SilentDLC:record_grant("skipped", tostring(type_items) .. " - acquisition API unavailable")
+			return false
+		end
+
+		if type_items == "suit_variations" then
+			if type(item_entry) ~= "table" then
+				SilentDLC:record_grant("skipped", "suit_variations - invalid item")
+				return false
+			end
+			managers.blackmarket[method](managers.blackmarket, item_entry[1], item_entry[2])
+		else
+			managers.blackmarket[method](managers.blackmarket, item_entry)
+		end
+
+		drop.remaining = 0
+		SilentDLC:record_grant("added")
+		return true
+	end
+
+	return safe_add_inventory(drop.global_value, type_items, item_entry, drop.remaining, "added", drop)
+end
+
+local function upgrade_level_unlocked(upgrade)
+	local level = managers.upgrades.find_in_level_tree and managers.upgrades:find_in_level_tree(upgrade)
+	if not level then
+		return true
+	end
+
+	return managers.experience and managers.experience:current_level() >= level or false
 end
 
 -- Safe replace: stock give_dlc_package crashes / misbehaves on bad loot rows
@@ -166,6 +202,10 @@ function GenericDLCManager:give_dlc_package()
 	if not Global.dlc_save.packages then
 		Global.dlc_save.packages = {}
 	end
+	-- Persist only unfinished drops. Completed rows must not be granted again
+	-- when another row fails, even after saving and restarting the game.
+	Global.dlc_save.silent_dlc_pending = Global.dlc_save.silent_dlc_pending or {}
+	local pending = Global.dlc_save.silent_dlc_pending
 
 	if not tweak_data or not tweak_data.dlc then
 		return
@@ -174,74 +214,65 @@ function GenericDLCManager:give_dlc_package()
 	for package_id, data in pairs(tweak_data.dlc) do
 		if self:is_dlc_unlocked(package_id) then
 			if not Global.dlc_save.packages[package_id] then
-				Global.dlc_save.packages[package_id] = true
-
 				local content = data and data.content
 				local loot_drops = content and content.loot_drops or {}
-
-				for _, loot_drop in ipairs(loot_drops) do
-					local ok, err = pcall(function()
+				local rows = {}
+				for index, loot_drop in ipairs(loot_drops) do
+					local ok, row = pcall(function()
 						local drop = loot_drop
 						if type(drop) == "table" and #drop > 0 then
 							drop = drop[math.random(#drop)]
 						end
 
 						if type(drop) ~= "table" or not drop.type_items then
-							return
+							error("invalid loot row")
 						end
-
-						local type_items = drop.type_items
-						local item_entry = drop.item_entry
-
-						if type_items == "armor_skins" then
-							if managers.blackmarket.on_aquired_armor_skin then
-								managers.blackmarket:on_aquired_armor_skin(item_entry)
-								SilentDLC:record_grant("added")
-							end
-							return
-						end
-
-						if type_items == "player_styles" then
-							if managers.blackmarket.on_aquired_player_style then
-								managers.blackmarket:on_aquired_player_style(item_entry)
-								SilentDLC:record_grant("added")
-							end
-							return
-						end
-
-						if type_items == "suit_variations" then
-							if type(item_entry) == "table" and managers.blackmarket.on_aquired_suit_variation then
-								managers.blackmarket:on_aquired_suit_variation(item_entry[1], item_entry[2])
-								SilentDLC:record_grant("added")
-							end
-							return
-						end
-
-						if type_items == "gloves" then
-							if managers.blackmarket.on_aquired_glove_id then
-								managers.blackmarket:on_aquired_glove_id(item_entry)
-								SilentDLC:record_grant("added")
-							end
-							return
-						end
-
-						local global_value = drop.global_value or (content and content.loot_global_value) or package_id
-						safe_add_inventory(global_value, type_items, item_entry, drop.amount or 1)
+						return {
+							type_items = drop.type_items,
+							item_entry = drop.item_entry,
+							global_value = drop.global_value or (content and content.loot_global_value) or package_id,
+							remaining = drop.amount or 1
+						}
 					end)
-
-					if not ok then
-						SilentDLC:record_grant("skipped", tostring(package_id) .. " - " .. tostring(err))
+					if ok then
+						rows[index] = row
+					else
+						SilentDLC:record_grant("skipped", tostring(package_id) .. " - " .. tostring(row))
 					end
 				end
+				pending[package_id] = rows
+				Global.dlc_save.packages[package_id] = true
+			end
+
+			local rows = pending[package_id]
+			for index, drop in pairs(rows or {}) do
+				local ok, complete = pcall(grant_pending_drop, drop)
+				if ok and complete then
+					rows[index] = nil
+				elseif not ok then
+					SilentDLC:record_grant("skipped", tostring(package_id) .. " - " .. tostring(complete))
+				end
+			end
+			if rows and not next(rows) then
+				pending[package_id] = nil
 			end
 
 			local identifier = UpgradesManager.AQUIRE_STRINGS[5] .. tostring(package_id)
 			for _, upgrade in ipairs(data.content and data.content.upgrades or {}) do
-				if managers.upgrades and not managers.upgrades:aquired(upgrade, identifier) then
-					managers.upgrades:aquire_default(upgrade, identifier)
+				if managers.upgrades then
+					if upgrade_level_unlocked(upgrade) then
+						if not managers.upgrades:aquired(upgrade, identifier) then
+							managers.upgrades:aquire_default(upgrade, identifier)
+						end
+					elseif managers.upgrades:aquired(upgrade, identifier) then
+						-- Remove only this package's grant, preserving other sources.
+						managers.upgrades:unaquire(upgrade, identifier)
+					end
 				end
 			end
-		else
+		elseif managers.achievment and SilentDLC._achievement_fetch_ready == managers.achievment and Global.dlc_save.silent_dlc_progression_repair == 1 then
+			-- Do not revoke saved rewards from transient false achievement
+			-- flags during startup, or bypass a deferred recovery backup.
 			local identifier = UpgradesManager.AQUIRE_STRINGS[5] .. tostring(package_id)
 			for _, upgrade in ipairs(data.content and data.content.upgrades or {}) do
 				if managers.upgrades and managers.upgrades:aquired(upgrade, identifier) then
@@ -273,8 +304,12 @@ function GenericDLCManager:give_missing_package()
 			local content = data and data.content
 			local loot_drops = content and content.loot_drops or {}
 
-			for _, loot_drop in ipairs(loot_drops) do
+			for index, loot_drop in ipairs(loot_drops) do
 				local ok, err = pcall(function()
+					local pending = Global.dlc_save.silent_dlc_pending
+					if pending and pending[package_id] and pending[package_id][index] then
+						return -- give_dlc_package retries this row, including partial amounts
+					end
 					-- stock only processes non-array loot rows here
 					if type(loot_drop) ~= "table" or #loot_drop > 0 or not loot_drop.type_items then
 						return
@@ -398,6 +433,11 @@ local function grant_packages(dlc_manager)
 end
 
 force_unlock_api()
+
+Hooks:PreHook(GenericDLCManager, "give_dlc_and_verify_blackmarket", "SilentDLC_ProgressionRepair", function(self)
+	SilentDLC._progression_save_loaded = true
+	SilentDLC:try_repair_earned_rewards(self)
+end)
 
 Hooks:PostHook(WINDLCManager, "init", "SilentDLC_WinInit", function(self)
 	force_all_verified()

@@ -6,6 +6,41 @@ local RISK_COLOR = Color(1, 1, 0.15, 0.15)
 local BADGE_BG = Color(0.9, 0.55, 0.05, 0.05)
 local BADGE_TEXT = "CHEATER"
 
+local function has_risk_tint(bitmap)
+	local color = bitmap:color()
+	return color.r == RISK_COLOR.r and color.g == RISK_COLOR.g and color.b == RISK_COLOR.b
+end
+
+local function tint_bitmap(slot, bitmap_key, state_key)
+	local bitmap = slot[bitmap_key]
+	if not alive(bitmap) then
+		return
+	end
+
+	local state = slot[state_key]
+	-- A texture callback or another mod may have replaced the bitmap/color.
+	-- Save that current color, including alpha, before applying our tint.
+	if not state or state.bitmap ~= bitmap or not has_risk_tint(bitmap) then
+		slot[state_key] = { bitmap = bitmap, color = bitmap:color(), data = slot._data }
+	end
+	bitmap:set_color(RISK_COLOR)
+end
+
+local function restore_bitmap(slot, bitmap_key, state_key)
+	local bitmap, state = slot[bitmap_key], slot[state_key]
+	if state and state.bitmap == bitmap and alive(bitmap) and has_risk_tint(bitmap) then
+		if state.data == slot._data then
+			bitmap:set_color(state.color)
+		else
+			-- Reused slots must use the new item's stock tint, not the old one.
+			local data = slot._data or {}
+			bitmap:set_color((slot._post_load_color or data.bitmap_color or Color.white):with_alpha(slot._post_load_alpha or data.bitmap_alpha or 1))
+		end
+	end
+	-- Unmarked bitmaps and colors changed by others are left intact.
+	slot[state_key] = nil
+end
+
 local function clear_slot_mark(slot)
 	if not slot then
 		return
@@ -13,16 +48,8 @@ local function clear_slot_mark(slot)
 
 	slot._silent_dlc_risky = nil
 
-	if alive(slot._bitmap) then
-		slot._bitmap:set_color(slot._post_load_color or (slot._data and slot._data.bitmap_color) or Color.white)
-	end
-
-	if alive(slot._akimbo_bitmap) then
-		slot._akimbo_bitmap:set_color(slot._silent_dlc_akimbo_color or Color.white)
-	end
-
-	slot._silent_dlc_bitmap_color = nil
-	slot._silent_dlc_akimbo_color = nil
+	restore_bitmap(slot, "_bitmap", "_silent_dlc_bitmap_state")
+	restore_bitmap(slot, "_akimbo_bitmap", "_silent_dlc_akimbo_state")
 
 	if alive(slot._silent_dlc_badge) then
 		slot._silent_dlc_badge:set_visible(false)
@@ -48,15 +75,8 @@ local function apply_slot_mark(slot)
 	slot._silent_dlc_risky = true
 
 	-- Tint main bitmap (may load later — reapplied in texture hook)
-	if alive(slot._bitmap) then
-		slot._silent_dlc_bitmap_color = slot._silent_dlc_bitmap_color or slot._bitmap:color()
-		slot._bitmap:set_color(RISK_COLOR)
-	end
-
-	if alive(slot._akimbo_bitmap) then
-		slot._silent_dlc_akimbo_color = slot._silent_dlc_akimbo_color or slot._akimbo_bitmap:color()
-		slot._akimbo_bitmap:set_color(RISK_COLOR)
-	end
+	tint_bitmap(slot, "_bitmap", "_silent_dlc_bitmap_state")
+	tint_bitmap(slot, "_akimbo_bitmap", "_silent_dlc_akimbo_state")
 
 	-- Persistent corner badge (does not rely on text_name which BM slots often lack)
 	if not alive(slot._silent_dlc_badge) then
@@ -159,15 +179,15 @@ if BlackMarketGui and BlackMarketGui.update_info_text then
 			return
 		end
 
-		local msg = "⚠ CHEATER TAG if equipped online (unowned DLC)"
+		local msg = "⚠ May trigger CHEATER TAG if equipped online"
 		local is_character = data.category == "characters" or data.category == "character"
 		if is_character then
-			msg = "⚠ CHEATER TAG if you host with this unowned DLC character"
+			msg = "⚠ May trigger CHEATER TAG if you host with this unowned DLC character"
 		end
 		if SilentDLC:is_safe_mode() then
-			msg = msg .. (is_character and " | Safe mode blocks hosting with this" or " | Safe mode blocks this")
+			msg = msg .. (is_character and " | Safe mode blocks hosting with this" or " | Safe mode blocks online use; offline equip allowed")
 		elseif SilentDLC:is_normal_mode() then
-			msg = msg .. " | Normal mode asks to confirm"
+			msg = msg .. (is_character and " | Normal mode confirms hosting" or " | Normal mode confirms online use; offline equip allowed")
 		end
 
 		append_info(self, msg)

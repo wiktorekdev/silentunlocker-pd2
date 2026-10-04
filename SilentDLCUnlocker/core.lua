@@ -3,8 +3,8 @@ SilentDLC = SilentDLC or {}
 SilentDLC.MOD_PATH = SilentDLC.MOD_PATH or ModPath
 SilentDLC.SAVE_PATH = SavePath .. "silent_dlc_unlocker.json"
 
--- safe   = hard block risky actions
--- normal = confirm popup, then allow
+-- safe   = hard block risky multiplayer actions
+-- normal = confirm risky multiplayer actions, then allow
 -- risky  = no blocks, no popups
 SilentDLC.MODE = {
 	SAFE = "safe",
@@ -98,17 +98,12 @@ function SilentDLC:is_risky_mode()
 	return self.settings.mode == self.MODE.RISKY
 end
 
--- legacy name
-function SilentDLC:is_all_mode()
-	return self:is_risky_mode()
-end
+function SilentDLC:is_multiplayer_active()
+	if Global and Global.game_settings and Global.game_settings.single_player then
+		return false
+	end
 
-function SilentDLC:should_block_risky()
-	return self:is_safe_mode()
-end
-
-function SilentDLC:should_confirm_risky()
-	return self:is_normal_mode()
+	return managers and managers.network and managers.network:session() ~= nil or false
 end
 
 function SilentDLC:should_mark_risky()
@@ -196,7 +191,7 @@ function SilentDLC:gate_risky(message, on_allow)
 
 	if self:is_safe_mode() then
 		self:notify("Blocked: " .. tostring(message))
-		self:alert("Blocked by Safe mode", tostring(message) .. "\n\nSafe mode blocks CHEATER-risk actions so other players' games cannot detect you. Unequip the listed items or pick another mode in Mod Options - Silent DLC Unlocker.")
+		self:alert("Blocked by Safe mode", tostring(message) .. "\n\nSafe mode blocks the detected multiplayer risks. Unequip the listed items or pick another mode in Mod Options - Silent DLC Unlocker. You can equip these items offline.")
 
 		return "deny"
 	end
@@ -216,16 +211,11 @@ function SilentDLC:gate_risky(message, on_allow)
 	return "pending"
 end
 
-function SilentDLC:record_real_ownership(dlc_name, owned)
-	if not dlc_name or dlc_name == "" then
-		return
-	end
-
-	self.real_owned[dlc_name] = owned and true or false
-end
-
 function SilentDLC:is_app_owned(app_id)
 	if not app_id then
+		return false
+	end
+	if SystemInfo:distribution() ~= Idstring("STEAM") or not Steam or not Steam.is_product_owned then
 		return false
 	end
 
@@ -234,40 +224,38 @@ function SilentDLC:is_app_owned(app_id)
 		return self.owned_by_app[key]
 	end
 
-	local owned = false
-	if SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned then
-		owned = Steam:is_product_owned(app_id) and true or false
-	end
-
+	local owned = Steam:is_product_owned(app_id) and true or false
 	self.owned_by_app[key] = owned
 	return owned
 end
 
-function SilentDLC:refresh_real_ownership()
+-- Read platform ownership only. Local .verified flags are never evidence
+-- of ownership, because dlc_unlock.lua changes them to unlock content.
+function SilentDLC:query_real_ownership(dlc_data)
+	if not dlc_data or dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
+		return true
+	end
+
+	return self:is_app_owned(dlc_data.app_id)
+end
+
+function SilentDLC:refresh_real_ownership(force)
 	if not Global or not Global.dlc_manager or not Global.dlc_manager.all_dlc_data then
 		return
 	end
 
-	local is_steam = SystemInfo:distribution() == Idstring("STEAM")
-	self.owned_by_app = {}
+	local distribution = SystemInfo:distribution()
+	if force or self._ownership_distribution ~= distribution then
+		self.owned_by_app = {}
+	end
+	self._ownership_distribution = distribution
+	local owned = {}
 
 	for dlc_name, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
-		if dlc_data.external then
-			self.real_owned[dlc_name] = true
-		elseif not dlc_data.app_id then
-			-- keep prior snapshot if we had one from _check_dlc_data
-			if self.real_owned[dlc_name] == nil then
-				self.real_owned[dlc_name] = false
-			end
-		elseif tostring(dlc_data.app_id) == "218620" then
-			self.real_owned[dlc_name] = true
-		elseif is_steam and Steam and Steam.is_product_owned then
-			self.real_owned[dlc_name] = self:is_app_owned(dlc_data.app_id)
-		elseif self.real_owned[dlc_name] == nil then
-			self.real_owned[dlc_name] = false
-		end
+		owned[dlc_name] = self:query_real_ownership(dlc_data)
 	end
 
+	self.real_owned = owned
 	self._ownership_ready = true
 end
 
@@ -276,7 +264,7 @@ function SilentDLC:is_dlc_really_owned(dlc_name)
 		return true
 	end
 
-	if not self._ownership_ready then
+	if not self._ownership_ready or self._ownership_distribution ~= SystemInfo:distribution() then
 		self:refresh_real_ownership()
 	end
 
@@ -284,23 +272,13 @@ function SilentDLC:is_dlc_really_owned(dlc_name)
 		return self.real_owned[dlc_name]
 	end
 
-	local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc_name]
-	if not dlc_data then
-		-- Unknown id: treat as free/safe unless it looks like a global_value pack name
-		return true
-	end
-
-	if dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
-		return true
-	end
-
-	if SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned then
-		local owned = self:is_app_owned(dlc_data.app_id)
+	local dlc_data = Global and Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc_name]
+	local owned = self:query_real_ownership(dlc_data)
+	-- Unknown names are not cached: their DLC data may become available later.
+	if dlc_data then
 		self.real_owned[dlc_name] = owned
-		return owned
 	end
-
-	return false
+	return owned
 end
 
 -- Mirrors NetworkPeer outfit verification categories.
@@ -547,23 +525,6 @@ function SilentDLC:is_item_risky(category, item_id)
 	return result.risky, result.dlc, result.reason
 end
 
-function SilentDLC:is_item_risky_for_ui(category, item_id)
-	if self:is_all_mode() then
-		return false
-	end
-
-	return self:is_item_risky(category, item_id)
-end
-
-function SilentDLC:is_factory_weapon_risky(factory_id)
-	if not factory_id or not managers.weapon_factory then
-		return false
-	end
-
-	local weapon_id = managers.weapon_factory:get_weapon_id_by_factory_id(factory_id)
-	return self:is_item_risky("weapon", weapon_id)
-end
-
 function SilentDLC:is_weapon_mod_risky(part_id)
 	return self:is_item_risky("weapon_mods", part_id)
 end
@@ -767,19 +728,6 @@ function SilentDLC:notify(text)
 	log("[SilentDLC] " .. tostring(text))
 end
 
-function SilentDLC:risk_label(category, item_id)
-	local result = self:verify_item(category, item_id)
-	if not result.risky then
-		return nil
-	end
-
-	if result.dlc then
-		return "CHEATER TAG if equipped (" .. tostring(result.dlc) .. ")"
-	end
-
-	return "CHEATER TAG if equipped"
-end
-
 function SilentDLC:item_display_name(result)
 	if not result or not result.item_id then
 		return "unknown item"
@@ -795,7 +743,10 @@ function SilentDLC:item_display_name(result)
 	end
 
 	if data and data.name_id and managers and managers.localization then
-		return managers.localization:text(data.name_id)
+		local name = managers.localization:text(data.name_id)
+		if name and name ~= "" and name ~= data.name_id and not string.find(name, "ERROR:", 1, true) then
+			return name
+		end
 	end
 
 	return tostring(result.item_id)
@@ -882,7 +833,11 @@ function SilentDLC:format_preflight(action, risks)
 		elseif result.dlc then
 			detail = " (unowned DLC: " .. self:dlc_display_name(result.dlc) .. ")"
 		elseif result.reason then
-			detail = " (" .. tostring(result.reason) .. ")"
+			local reasons = {
+				invalid_item = "invalid item or component",
+				unattainable_item = "unavailable content"
+			}
+			detail = " (" .. tostring(reasons[result.reason] or result.reason) .. ")"
 		end
 		table.insert(lines, "• " .. tostring(result.label or "Item") .. ": " .. self:item_display_name(result) .. detail)
 	end
@@ -952,7 +907,7 @@ end
 
 -- Resolve risk from raw BlackMarketGui slot data
 function SilentDLC:slot_data_is_risky(data)
-	if not data or self:is_all_mode() then
+	if not data or self:is_risky_mode() then
 		return false
 	end
 
@@ -974,6 +929,12 @@ function SilentDLC:slot_data_is_risky(data)
 
 	-- Crafted weapons (primary/secondary slots)
 	if category == "primaries" or category == "secondaries" then
+		-- Shop rows use slot for the purchase destination, not the displayed
+		-- weapon. Stock populate_buy_weapon marks these as not_moddable.
+		if data.not_moddable then
+			return self:is_item_risky("weapon", name)
+		end
+
 		if data.slot and managers.blackmarket and managers.blackmarket.get_crafted_category_slot then
 			local crafted = managers.blackmarket:get_crafted_category_slot(category, data.slot)
 			if crafted then
