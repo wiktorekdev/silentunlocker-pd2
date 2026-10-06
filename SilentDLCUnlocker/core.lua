@@ -211,32 +211,44 @@ function SilentDLC:gate_risky(message, on_allow)
 	return "pending"
 end
 
-function SilentDLC:is_app_owned(app_id)
-	if not app_id then
-		return false
-	end
-	if SystemInfo:distribution() ~= Idstring("STEAM") or not Steam or not Steam.is_product_owned then
-		return false
+function SilentDLC:is_product_owned(product_id)
+	local key = tostring(product_id)
+	if self.owned_by_app[key] == nil then
+		local owned
+		if SystemInfo:distribution() == Idstring("STEAM") and Steam and Steam.is_product_owned then
+			owned = Steam:is_product_owned(product_id)
+		elseif Distribution and Distribution.is_product_owned then
+			owned = Distribution:is_product_owned(product_id)
+		end
+		self.owned_by_app[key] = owned and true or false
 	end
 
-	local key = tostring(app_id)
-	if self.owned_by_app[key] ~= nil then
-		return self.owned_by_app[key]
-	end
-
-	local owned = Steam:is_product_owned(app_id) and true or false
-	self.owned_by_app[key] = owned
-	return owned
+	return self.owned_by_app[key]
 end
 
 -- Read platform ownership only. Local .verified flags are never evidence
 -- of ownership, because dlc_unlock.lua changes them to unlock content.
+-- Steam checks app_id and Epic checks epic_id, like WinSteamDLCManager.
 function SilentDLC:query_real_ownership(dlc_data)
-	if not dlc_data or dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
+	local distribution = SystemInfo:distribution()
+	local id_key = distribution == Idstring("STEAM") and "app_id" or distribution == Idstring("EPIC") and "epic_id"
+	if not dlc_data or dlc_data.external or not id_key then
 		return true
 	end
 
-	return self:is_app_owned(dlc_data.app_id)
+	local product_id = dlc_data[id_key]
+	if not product_id then
+		-- Content without any product (e.g. Steam group rewards) is not
+		-- checked; content sold only on the other platform cannot be owned.
+		return not (dlc_data.app_id or dlc_data.epic_id)
+	end
+
+	local full_game = Global.dlc_manager.all_dlc_data.full_game
+	if full_game and tostring(product_id) == tostring(full_game[id_key]) then
+		return true
+	end
+
+	return self:is_product_owned(product_id)
 end
 
 function SilentDLC:refresh_real_ownership(force)
@@ -372,30 +384,6 @@ function SilentDLC:item_data_skips_ownership(item_data)
 	return false
 end
 
-function SilentDLC:resolve_dlc_from_global_value(global_value)
-	if not global_value or global_value == "" or global_value == "normal" or global_value == "infamous" then
-		return nil
-	end
-
-	if managers.dlc and managers.dlc.global_value_to_dlc then
-		local dlc = managers.dlc:global_value_to_dlc(global_value)
-		if dlc then
-			return dlc
-		end
-	end
-
-	-- Often global_value name == dlc name
-	if Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[global_value] then
-		return global_value
-	end
-
-	if tweak_data.dlc and tweak_data.dlc[global_value] then
-		return global_value
-	end
-
-	return nil
-end
-
 function SilentDLC:collect_item_dlcs(item_data)
 	local found = {}
 	local list = {}
@@ -411,7 +399,7 @@ function SilentDLC:collect_item_dlcs(item_data)
 		return list
 	end
 
-	add(item_data.dlc or self:resolve_dlc_from_global_value(item_data.global_value))
+	add(item_data.dlc or item_data.global_value and managers.dlc and managers.dlc:global_value_to_dlc(item_data.global_value))
 
 	if item_data.dlc_list then
 		for _, dlc in pairs(item_data.dlc_list) do
@@ -422,40 +410,10 @@ function SilentDLC:collect_item_dlcs(item_data)
 	return list
 end
 
+-- Peers skip names without DLC data (NetworkPeer:_verify_item_data).
 function SilentDLC:dlc_is_risky(dlc)
-	if not dlc then
-		return false
-	end
-
-	local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc]
-
-	-- No steam app / external / free base → not a tag source
-	if dlc_data then
-		if dlc_data.external or not dlc_data.app_id or tostring(dlc_data.app_id) == "218620" then
-			return false
-		end
-	elseif tweak_data.dlc and tweak_data.dlc[dlc] and tweak_data.dlc[dlc].free then
-		return false
-	end
-
-	return not self:is_dlc_really_owned(dlc)
-end
-
-function SilentDLC:outfit_dlc_is_risky(dlc)
-	if SystemInfo:distribution() == Idstring("STEAM") then
-		return self:dlc_is_risky(dlc)
-	end
-
-	if TDVS and TDVS.should_use and TDVS:should_use() and TDVS.available and TDVS:available() then
-		local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc]
-		if not dlc_data or dlc_data.external or not dlc_data.epic_id then
-			return false
-		end
-
-		return not Distribution:is_product_owned(dlc_data.epic_id)
-	end
-
-	return false
+	local all_dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data
+	return dlc and all_dlc_data and all_dlc_data[dlc] and not self:is_dlc_really_owned(dlc) or false
 end
 
 function SilentDLC:item_data_is_risky(item_data)
@@ -477,7 +435,7 @@ function SilentDLC:item_data_is_risky(item_data)
 	end
 
 	for _, dlc in ipairs(dlc_list) do
-		if self:outfit_dlc_is_risky(dlc) then
+		if self:dlc_is_risky(dlc) then
 			return true, dlc, "unowned_dlc"
 		end
 	end
@@ -545,13 +503,41 @@ function SilentDLC:is_weapon_color_risky(color_id)
 
 	local risky, dlc = false, nil
 	for _, candidate in ipairs(self:collect_item_dlcs(item_data)) do
-		if self:outfit_dlc_is_risky(candidate) then
+		if self:dlc_is_risky(candidate) then
 			risky, dlc = true, candidate
 			break
 		end
 	end
 
 	return risky, dlc, risky and "unowned_dlc" or nil
+end
+
+-- Parts peers never verify: the factory default blueprint and skin parts.
+function SilentDLC:weapon_safe_parts(crafted, weapon_id)
+	local safe = {}
+	local factory = managers.weapon_factory
+	if not crafted or not factory then
+		return safe, false
+	end
+
+	local skin_bp, is_color_skin = factory:get_cosmetics_blueprint_by_weapon_id(weapon_id or crafted.weapon_id, crafted.cosmetics and crafted.cosmetics.id)
+	for _, part_id in ipairs(factory:get_default_blueprint_by_factory_id(crafted.factory_id) or {}) do
+		safe[part_id] = true
+	end
+
+	for _, part_id in ipairs(skin_bp or {}) do
+		safe[part_id] = true
+	end
+
+	return safe, is_color_skin
+end
+
+function SilentDLC:verify_weapon_part(crafted, part_id)
+	if self:weapon_safe_parts(crafted)[part_id] then
+		return self:verification_result(false)
+	end
+
+	return self:verify_item("weapon_mods", part_id)
 end
 
 function SilentDLC:verify_crafted_weapon(crafted)
@@ -570,18 +556,8 @@ function SilentDLC:verify_crafted_weapon(crafted)
 	end
 
 	if crafted.blueprint and managers.weapon_factory then
-		local safe_blueprint = {}
-		local default_bp = managers.weapon_factory:get_default_blueprint_by_factory_id(crafted.factory_id) or {}
 		local cosmetics_id = crafted.cosmetics and crafted.cosmetics.id
-		local skin_bp, is_color_skin = managers.weapon_factory:get_cosmetics_blueprint_by_weapon_id(weapon_id, cosmetics_id)
-
-		for _, part_id in ipairs(default_bp) do
-			safe_blueprint[part_id] = true
-		end
-
-		for _, part_id in ipairs(skin_bp or {}) do
-			safe_blueprint[part_id] = true
-		end
+		local safe_blueprint, is_color_skin = self:weapon_safe_parts(crafted, weapon_id)
 
 		for _, part_id in ipairs(crafted.blueprint) do
 			if not safe_blueprint[part_id] then
@@ -668,22 +644,11 @@ function SilentDLC:verify_character(character_id)
 	end
 
 	local character_data = tweak_data.blackmarket.characters[character_id]
-	if not character_data or not character_data.dlc then
-		return self:verification_result(false)
-	end
-
-	local dlc_data = Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[character_data.dlc]
-	if not dlc_data or not dlc_data.app_id then
-		return self:verification_result(false)
-	end
-
-	local owned = self:is_dlc_really_owned(character_data.dlc)
-	if SystemInfo:distribution() == Idstring("STEAM") then
-		owned = self:is_app_owned(dlc_data.app_id)
-	end
-
-	if not owned then
-		return self:verification_result(true, "unowned_dlc", "characters", character_id, character_data.dlc)
+	local dlc = character_data and character_data.dlc
+	local dlc_data = dlc and Global.dlc_manager and Global.dlc_manager.all_dlc_data and Global.dlc_manager.all_dlc_data[dlc]
+	-- NetworkPeer:verify_character skips DLC data without a Steam app ID.
+	if dlc_data and dlc_data.app_id and not self:is_dlc_really_owned(dlc) then
+		return self:verification_result(true, "unowned_dlc", "characters", character_id, dlc)
 	end
 
 	return self:verification_result(false)
@@ -929,6 +894,17 @@ function SilentDLC:slot_data_is_risky(data)
 
 	-- Crafted weapons (primary/secondary slots)
 	if category == "primaries" or category == "secondaries" then
+		-- Mod and skin rows reuse the weapon's category/slot; judge the row's
+		-- own item, not the whole crafted weapon (issue #8).
+		if data.cosmetic_id then
+			return self:is_weapon_color_risky(data.cosmetic_id)
+		end
+
+		if name and tweak_data.weapon.factory.parts[name] then
+			local crafted = data.slot and managers.blackmarket and managers.blackmarket:get_crafted_category_slot(category, data.slot)
+			return self:verify_weapon_part(crafted, name).risky
+		end
+
 		-- Shop rows use slot for the purchase destination, not the displayed
 		-- weapon. Stock populate_buy_weapon marks these as not_moddable.
 		if data.not_moddable then

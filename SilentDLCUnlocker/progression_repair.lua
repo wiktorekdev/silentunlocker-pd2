@@ -333,6 +333,8 @@ function SilentDLC:repair_earned_rewards(dlc_manager)
 					blackmarket:remove_new_drop(global_value, category, id)
 				end
 			end
+			-- The grant report is reset right after this, so log the removal here.
+			log("[SilentDLC] Removed unearned progression reward: " .. reward_key(category, id))
 			self:record_grant("repaired", "progression reward: " .. reward_key(category, id))
 		end
 		for package_id in pairs(locked) do

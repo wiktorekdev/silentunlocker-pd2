@@ -2,6 +2,23 @@
 
 Notable changes to Silent DLC Unlocker are documented here. The project follows [Semantic Versioning](https://semver.org/) where practical.
 
+## 1.6.1 - 2026-10-07
+
+### Fixed
+
+- Mark weapon mods and skins by their own DLC instead of the crafted weapon's. An unowned DLC skin no longer tags every mod on the weapon as CHEATER. Fixes #8.
+- Don't mark a weapon's default parts or parts included with its skin; peers never verify them.
+- Check Crime.Net Quickplay joins in Safe and Normal modes. Quickplay previously bypassed the join check.
+- Check hosting risks before buying a premium contract or starting a multiplayer Crime Spree. Previously, a block or a declined confirmation came after the game had taken the offshore money or coins.
+- Refresh the Blackmarket after a Normal-mode confirmation, so the confirmed equip or attachment shows immediately.
+- On Epic, check ownership with Epic product IDs. Owned DLC heists and characters were marked as risky.
+- Log each reward removed by the progression repair. The package report that follows used to discard the list.
+
+### Changed
+
+- Attaching a weapon's default part or a part included with its skin no longer asks for confirmation; peers never verify those parts.
+- Match items to DLCs the same way the game does. Removed fallbacks that the game's verification never uses.
+
 ## 1.6.0 - 2026-10-04
 
 ### Fixed

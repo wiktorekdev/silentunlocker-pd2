@@ -2,6 +2,19 @@ if not SilentDLC then
 	dofile(ModPath .. "core.lua")
 end
 
+-- Blackmarket callbacks reload the menu right after the guarded call, before
+-- a Normal-mode confirmation. Reload again once the confirmed action ran.
+local function confirmed(action)
+	return function()
+		action()
+
+		local gui = managers.menu_component and managers.menu_component._blackmarket_gui
+		if gui and gui.reload then
+			gui:reload()
+		end
+	end
+end
+
 local old_equip_weapon = BlackMarketManager.equip_weapon
 function BlackMarketManager:equip_weapon(category, slot, skip_outfit)
 	if SilentDLC._pass_guard or not SilentDLC:is_multiplayer_active() then
@@ -13,9 +26,9 @@ function BlackMarketManager:equip_weapon(category, slot, skip_outfit)
 
 		local risk = crafted and SilentDLC:verify_crafted_weapon(crafted)
 		if risk and risk.risky then
-			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this weapon online", { risk }), function()
+			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this weapon online", { risk }), confirmed(function()
 				old_equip_weapon(self, category, slot, skip_outfit)
-			end)
+			end))
 
 			if result ~= "allow" then
 				return false
@@ -37,9 +50,9 @@ function BlackMarketManager:equip_mask(slot, skip_outfit)
 
 		local risk = crafted and SilentDLC:verify_crafted_mask(crafted)
 		if risk and risk.risky then
-			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this mask online", { risk }), function()
+			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this mask online", { risk }), confirmed(function()
 				old_equip_mask(self, slot, skip_outfit)
-			end)
+			end))
 
 			if result ~= "allow" then
 				return false
@@ -58,9 +71,9 @@ function BlackMarketManager:equip_melee_weapon(melee_weapon_id, skip_outfit)
 
 	local risk = SilentDLC:verify_item("melee_weapons", melee_weapon_id)
 	if risk.risky then
-		local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this melee weapon online", { risk }), function()
+		local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Equipping this melee weapon online", { risk }), confirmed(function()
 			old_equip_melee(self, melee_weapon_id, skip_outfit)
-		end)
+		end))
 
 		if result ~= "allow" then
 			return false
@@ -80,9 +93,9 @@ if old_equip_character then
 		local is_hosting = Network:is_server()
 		local result = SilentDLC:verify_character(character_name)
 		if is_hosting and result.risky then
-			local gate = SilentDLC:gate_risky(SilentDLC:format_preflight("Changing character while hosting", { result }), function()
+			local gate = SilentDLC:gate_risky(SilentDLC:format_preflight("Changing character while hosting", { result }), confirmed(function()
 				old_equip_character(self, character_name)
-			end)
+			end))
 
 			if gate ~= "allow" then
 				return false
@@ -100,11 +113,11 @@ if old_buy_and_modify then
 			return old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume, loading)
 		end
 
-		local risk = SilentDLC:verify_item("weapon_mods", part_id)
+		local risk = SilentDLC:verify_weapon_part(self:get_crafted_category_slot(category, slot), part_id)
 		if risk.risky then
-			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Attaching this component online", { risk }), function()
+			local result = SilentDLC:gate_risky(SilentDLC:format_preflight("Attaching this component online", { risk }), confirmed(function()
 				old_buy_and_modify(self, category, slot, global_value, part_id, free_of_charge, no_consume, loading)
-			end)
+			end))
 
 			if result ~= "allow" then
 				return false

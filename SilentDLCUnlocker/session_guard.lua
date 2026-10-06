@@ -32,6 +32,32 @@ local function wrap_matchmaking(class_name)
 		end
 	end
 
+	-- Crime.Net Quickplay calls join_server directly, skipping the check above.
+	-- Other callers reach join_server through join_server_with_check.
+	local quick_key = "_session_quickplay_" .. class_name
+	if class_table.join_server and not SilentDLC[quick_key] then
+		SilentDLC[quick_key] = true
+		local old_join_server = class_table.join_server
+
+		function class_table:join_server(room_id, skip_showing_dialog, quickplay, ...)
+			if not quickplay or SilentDLC._pass_guard then
+				return old_join_server(self, room_id, skip_showing_dialog, quickplay, ...)
+			end
+
+			local args = { ... }
+			local count = select("#", ...)
+			local result = SilentDLC:guard_multiplayer("Joining", false, nil, function()
+				old_join_server(self, room_id, skip_showing_dialog, quickplay, unpack(args, 1, count))
+			end)
+
+			if result ~= "allow" then
+				return false
+			end
+
+			return old_join_server(self, room_id, skip_showing_dialog, quickplay, ...)
+		end
+	end
+
 	local host_key = "_session_host_" .. class_name
 	if class_table.create_lobby and not SilentDLC[host_key] then
 		SilentDLC[host_key] = true

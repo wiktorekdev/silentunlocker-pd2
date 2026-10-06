@@ -204,3 +204,44 @@ if not SilentDLC._heist_start_hooked and MenuCallbackHandler and MenuCallbackHan
 		return old_start(self, job_data)
 	end
 end
+
+-- ---------------------------------------------------------------------------
+-- Paid starts: check before the game spends offshore money or coins.
+-- start_job/create_lobby run only after the purchase, too late to cancel it.
+-- ---------------------------------------------------------------------------
+local function guard_before_purchase(name, get_job_id)
+	local key = "_purchase_guard_" .. name
+	local old = MenuCallbackHandler and MenuCallbackHandler[name]
+	if not old or SilentDLC[key] then
+		return
+	end
+
+	SilentDLC[key] = true
+
+	MenuCallbackHandler[name] = function(self, ...)
+		if SilentDLC._pass_guard or Global.game_settings.single_player then
+			return old(self, ...)
+		end
+
+		local args = { ... }
+		local count = select("#", ...)
+		local ok, job_id = pcall(get_job_id, ...)
+		local result = SilentDLC:guard_multiplayer("Hosting", true, ok and job_id or nil, function()
+			old(self, unpack(args, 1, count))
+		end)
+
+		if result ~= "allow" then
+			return
+		end
+
+		return old(self, ...)
+	end
+end
+
+guard_before_purchase("_buy_crimenet_contract", function(item)
+	return item:parameters().gui_node.node:parameters().menu_component_data.job_id
+end)
+
+guard_before_purchase("_accept_crime_spree_contract_mp", function()
+	return nil
+end)

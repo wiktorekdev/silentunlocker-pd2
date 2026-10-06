@@ -4,7 +4,7 @@
 	"author": "wiktorekdev",
 	"contact": "https://github.com/wiktorekdev/silentunlocker-pd2",
 	"image": "logo.png",
-	"version": "1.6.0",
+	"version": "1.6.1",
 	"blt_version": 2,
 	"priority": 1,
 	"updates": [
