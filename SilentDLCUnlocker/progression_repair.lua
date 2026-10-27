@@ -45,7 +45,12 @@ local function package_state(dlc_manager, package_id, seen)
 	if data.parent_dlc and package_state(dlc_manager, data.parent_dlc, seen) == nil then
 		return nil
 	end
+	-- A DLC omitted from the optional list is not evidence that its saved
+	-- progression rewards were unearned. Check them under the prior policy.
+	local previous = SilentDLC._preserve_dlc_items
+	SilentDLC._preserve_dlc_items = true
 	local ok, unlocked = pcall(dlc_manager.is_dlc_unlocked, dlc_manager, package_id)
+	SilentDLC._preserve_dlc_items = previous
 	if ok then
 		return unlocked and true or false
 	end

@@ -15,6 +15,8 @@ assert(SilentDLC.selected_apps["111"] and not SilentDLC.selected_apps["222"])
 assert(#messages == 1 and messages[1]:find("Invalid DLC ID", 1, true))
 list("# comment\n ")
 assert(SilentDLC:load_dlc_selection() == nil)
+list("\239\187\191111\n")
+assert(SilentDLC:load_dlc_selection()["111"])
 list("invalid\n")
 assert(type(SilentDLC:load_dlc_selection()) == "table")
 list("111\n")
@@ -26,15 +28,19 @@ Global = { dlc_manager = { all_dlc_data = {
  selected = { app_id = "111" }, other = { app_id = "222" },
  owned = { app_id = "333", verified = true }
 } }, dlc_save = { packages = { other = true }, silent_dlc_progression_repair = 1 } }
-tweak_data = { dlc = { selected = {}, other = { content = { upgrades = { "keep" } } }, owned = {},
- achievement = { achievement_id = "award" }, free = { free = true } } }
-managers = { achievment = {}, upgrades = { aquired = function() return true end,
- unaquire = function() error("paid DLC upgrade was removed") end } }
+tweak_data = { dlc = { selected = { content = { loot_drops = { { type_items = "masks", item_entry = "mask" } } } }, other = { content = { upgrades = { "keep" } } }, owned = {},
+ earned = { parent_dlc = "other", achievement_id = "award", content = { upgrades = { "earned" } } },
+ achievement = { achievement_id = "award" }, free = { free = true } }, blackmarket = { masks = { mask = {} } } }
+local grants = 0
+managers = { achievment = { get_info = function() return { awarded = true } end }, upgrades = { aquired = function() return true end,
+ unaquire = function() error("paid DLC upgrade was removed") end },
+ blackmarket = { add_to_inventory = function() grants = grants + 1 end } }
 SilentDLC._achievement_fetch_ready = managers.achievment
 UpgradesManager = { AQUIRE_STRINGS = { [5] = "dlc_" } }
 GenericDLCManager = {
  has_dlc = function(self, dlc)
   if dlc == "achievement" then return false end
+  if dlc == "earned" then return self:is_dlc_unlocked("other") and managers.achievment:get_info("award").awarded end
   local data = Global.dlc_manager.all_dlc_data[dlc]
   return data and data.verified or false
  end,
@@ -55,6 +61,20 @@ assert(not WINDLCManager:_check_dlc_data(Global.dlc_manager.all_dlc_data.other))
 assert(WINDLCManager:_check_dlc_data(Global.dlc_manager.all_dlc_data.owned))
 manager:give_dlc_package()
 assert(Global.dlc_save.packages.other)
+assert(grants == 1)
+SilentDLC.selected_apps = { ["222"] = true }
+manager:give_dlc_package()
+SilentDLC.selected_apps = { ["111"] = true }
+manager:give_dlc_package()
+assert(grants == 1) -- Re-enabling a DLC must not duplicate its package grant.
+Global.dlc_save.packages.earned = true
+manager:give_dlc_package() -- Must not revoke an earned reward when its parent is unselected.
+Global.dlc_save.silent_dlc_progression_repair = nil
+SilentDLC._progression_save_loaded = true
+managers.blackmarket = { _global = {} }
+dofile(root .. "progression_repair.lua")
+SilentDLC:repair_earned_rewards(manager)
+assert(Global.dlc_save.silent_dlc_progression_repair == 1 and Global.dlc_save.packages.earned)
 BlackMarketManager = { _verify_dlc_items = function()
  assert(manager:is_dlc_unlocked("other")); error("verifier error")
 end, equip_weapon = function() end, equip_mask = function() end }

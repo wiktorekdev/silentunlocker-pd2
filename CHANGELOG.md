@@ -2,7 +2,7 @@
 
 Notable changes to Silent DLC Unlocker are documented here. The project follows [Semantic Versioning](https://semver.org/) where practical.
 
-## Unreleased
+## 1.6.2 - 2026-10-27
 
 ### Added
 

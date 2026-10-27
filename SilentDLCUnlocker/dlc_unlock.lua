@@ -275,10 +275,17 @@ function GenericDLCManager:give_dlc_package()
 		elseif is_progression_package(package_id) and managers.achievment and SilentDLC._achievement_fetch_ready == managers.achievment and Global.dlc_save.silent_dlc_progression_repair == 1 then
 			-- Do not revoke saved rewards from transient false achievement
 			-- flags during startup, or bypass a deferred recovery backup.
-			local identifier = UpgradesManager.AQUIRE_STRINGS[5] .. tostring(package_id)
-			for _, upgrade in ipairs(data.content and data.content.upgrades or {}) do
-				if managers.upgrades and managers.upgrades:aquired(upgrade, identifier) then
-					managers.upgrades:unaquire(upgrade, identifier)
+			-- A disabled parent DLC must not revoke an otherwise earned reward.
+			local previous = SilentDLC._preserve_dlc_items
+			SilentDLC._preserve_dlc_items = true
+			local ok, unlocked = pcall(self.is_dlc_unlocked, self, package_id)
+			SilentDLC._preserve_dlc_items = previous
+			if ok and not unlocked then
+				local identifier = UpgradesManager.AQUIRE_STRINGS[5] .. tostring(package_id)
+				for _, upgrade in ipairs(data.content and data.content.upgrades or {}) do
+					if managers.upgrades and managers.upgrades:aquired(upgrade, identifier) then
+						managers.upgrades:unaquire(upgrade, identifier)
+					end
 				end
 			end
 		end

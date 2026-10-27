@@ -13,8 +13,9 @@ function SilentDLC:load_dlc_selection()
 		end
 		return nil
 	end
-	local ids, active = {}, false
+	local ids, active, first = {}, false, true
 	for line in file:lines() do
+		if first then line = line:gsub("^\239\187\191", ""); first = false end
 		line = line:gsub("#.*$", ""):match("^%s*(.-)%s*$")
 		if line ~= "" then
 			active = true

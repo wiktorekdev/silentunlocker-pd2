@@ -7,7 +7,7 @@
 <p align="center">A PAYDAY 2 SuperBLT mod for unlocking DLC locally, with multiplayer warnings and safety controls.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.6.0-3b82f6?style=flat" alt="Version 1.6.0" />
+  <img src="https://img.shields.io/badge/version-1.6.2-3b82f6?style=flat" alt="Version 1.6.2" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat" alt="MIT license" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/releases/latest"><img src="https://img.shields.io/github/downloads/wiktorekdev/silentunlocker-pd2/total?style=flat&color=0ea5e9" alt="Downloads" /></a>
   <a href="https://github.com/wiktorekdev/silentunlocker-pd2/stargazers"><img src="https://img.shields.io/github/stars/wiktorekdev/silentunlocker-pd2?style=flat&color=f59e0b" alt="Stars" /></a>
@@ -51,11 +51,11 @@ Offline, you can equip items and attach weapon parts freely in every mode. Safe 
 
 ## Select DLCs
 
-To unlock only specific DLCs, create `mods/saves/silent_dlc_unlocker_dlcs.txt` and put one Steam app ID on each line. Lines beginning with `#` are comments. Restart the game after editing the file. If the file is missing or contains no IDs or invalid entries, the mod keeps its default unlock-all behavior. Invalid or unknown IDs are reported in the SuperBLT log; invalid entries do not enable unlock-all.
+To unlock only specific DLCs, create `mods/saves/silent_dlc_unlocker_dlcs.txt` and put one Steam app ID on each line. Lines beginning with `#` are comments. Restart the game after editing the file. If the file is missing, empty, or contains only comments, the mod keeps its default unlock-all behavior. Invalid or unknown IDs are reported in the SuperBLT log; invalid entries do not enable unlock-all.
 
 Owned and free content remains available, and progression requirements still apply. The mod does not remove previously granted DLC items when the selection changes. Such items can remain accessible in an existing save, so the list is not an inventory cleanup tool. Adding a DLC back does not reset its package or duplicate completed grants. Steam IDs are matched against the game's DLC data; Epic behavior has not been tested in-game.
 
-Version 1.6 repairs unearned achievement and milestone rewards granted by older versions, including Tombstone Slug. It checks the game's unlock conditions and preserves rewards with another valid source. Installed parts, masks, cosmetics, and saved profiles are repaired too; paid DLC remains locally unlocked.
+Version 1.6 repairs unearned achievement and milestone rewards granted by older versions, including Tombstone Slug. It checks the game's unlock conditions and preserves rewards with another valid source. Installed parts, masks, cosmetics, and saved profiles are repaired too; paid DLC follows your selection above.
 
 The repair waits for a successful achievement fetch and writes a recovery snapshot to `mods/saves/silent_dlc_progression_backup_*.json` before changing the loaded save. Missing achievement data or a backup failure postpones the affected repair. Start the game with 1.6 installed and let the game save before removing the mod. This does not restore the entire inventory to its pre-mod state; keep a copy of your PAYDAY 2 save before updating.
 
