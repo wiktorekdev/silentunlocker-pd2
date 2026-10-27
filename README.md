@@ -53,11 +53,9 @@ Offline, you can equip items and attach weapon parts freely in every mode. Safe 
 
 To unlock only specific DLCs, create `mods/saves/silent_dlc_unlocker_dlcs.txt` and put one Steam app ID on each line. Lines beginning with `#` are comments. Restart the game after editing the file. If the file is missing, empty, or contains only comments, the mod keeps its default unlock-all behavior. Invalid or unknown IDs are reported in the SuperBLT log; invalid entries do not enable unlock-all.
 
-Owned and free content remains available, and progression requirements still apply. The mod does not remove previously granted DLC items when the selection changes. Such items can remain accessible in an existing save, so the list is not an inventory cleanup tool. Adding a DLC back does not reset its package or duplicate completed grants. Steam IDs are matched against the game's DLC data; Epic behavior has not been tested in-game.
+Owned and free content remains available, and progression requirements still apply. Previously granted items remain in your save and may still be accessible. Epic behavior has not been tested in-game.
 
-Version 1.6 repairs unearned achievement and milestone rewards granted by older versions, including Tombstone Slug. It checks the game's unlock conditions and preserves rewards with another valid source. Installed parts, masks, cosmetics, and saved profiles are repaired too; paid DLC follows your selection above.
-
-The repair waits for a successful achievement fetch and writes a recovery snapshot to `mods/saves/silent_dlc_progression_backup_*.json` before changing the loaded save. Missing achievement data or a backup failure postpones the affected repair. Start the game with 1.6 installed and let the game save before removing the mod. This does not restore the entire inventory to its pre-mod state; keep a copy of your PAYDAY 2 save before updating.
+When repairing progression rewards from older versions, the mod saves a backup in `mods/saves/` before changing your save.
 
 ## Multiplayer
 
