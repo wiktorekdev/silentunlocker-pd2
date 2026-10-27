@@ -2,6 +2,12 @@
 
 Notable changes to Silent DLC Unlocker are documented here. The project follows [Semantic Versioning](https://semver.org/) where practical.
 
+## 1.6.2 - 2026-10-27
+
+### Added
+
+- Optionally unlock selected DLCs by Steam app ID using `mods/saves/silent_dlc_unlocker_dlcs.txt`, without deleting previously granted items.
+
 ## 1.6.1 - 2026-10-07
 
 ### Fixed
