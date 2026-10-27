@@ -30,13 +30,8 @@ local function wrap_check(class_name)
 	local old_check = class_table._check_dlc_data
 
 	class_table._check_dlc_data = function(self, dlc_data)
-		if old_check then
-			-- Preserve any platform-check side effects; its return value does
-			-- not represent real ownership after other unlocker hooks run.
-			pcall(old_check, self, dlc_data)
-		end
-
-		return true
+		local ok, original = pcall(old_check, self, dlc_data)
+		return SilentDLC:dlc_data_selected(dlc_data) or (ok and original) or false
 	end
 end
 
@@ -50,7 +45,9 @@ local function force_all_verified()
 	end
 
 	for _, dlc_data in pairs(Global.dlc_manager.all_dlc_data) do
-		dlc_data.verified = true
+		if SilentDLC:dlc_data_selected(dlc_data) then
+			dlc_data.verified = true
+		end
 	end
 end
 
@@ -75,7 +72,16 @@ local function force_unlock_api()
 			return old_has_dlc(self, dlc)
 		end
 
-		return true
+		if not SilentDLC.selected_apps or SilentDLC._preserve_dlc_items then
+			return true
+		end
+
+		local all = Global and Global.dlc_manager and Global.dlc_manager.all_dlc_data
+		local dlc_data = all and all[dlc == "cce" and "career_criminal_edition" or dlc]
+		if SilentDLC:dlc_data_selected(dlc_data) then
+			return true
+		end
+		return old_has_dlc(self, dlc)
 	end
 
 	function GenericDLCManager:is_global_value_unlocked(global_value)
@@ -83,27 +89,13 @@ local function force_unlock_api()
 		return not dlc or self:is_dlc_unlocked(dlc)
 	end
 
-	if GenericDLCManager.has_all_dlcs then
-		function GenericDLCManager:has_all_dlcs()
-			return true
-		end
-	end
-
-	if GenericDLCManager.has_goty_weapon_bundle_2014 then
-		function GenericDLCManager:has_goty_weapon_bundle_2014()
-			return true
-		end
-	end
-
-	if GenericDLCManager.has_goty_heist_bundle_2014 then
-		function GenericDLCManager:has_goty_heist_bundle_2014()
-			return true
-		end
-	end
-
-	if GenericDLCManager.has_goty_all_dlc_bundle_2014 then
-		function GenericDLCManager:has_goty_all_dlc_bundle_2014()
-			return true
+	for _, name in ipairs({ "has_all_dlcs", "has_goty_weapon_bundle_2014", "has_goty_heist_bundle_2014", "has_goty_all_dlc_bundle_2014" }) do
+		local original = GenericDLCManager[name]
+		if original then
+			GenericDLCManager[name] = function(self, ...)
+				if not SilentDLC.selected_apps or SilentDLC._preserve_dlc_items then return true end
+				return original(self, ...)
+			end
 		end
 	end
 end
@@ -194,6 +186,16 @@ local function upgrade_level_unlocked(upgrade)
 	return managers.experience and managers.experience:current_level() >= level or false
 end
 
+local function is_progression_package(package_id, seen)
+	local data = tweak_data.dlc[package_id]
+	if not data then return false end
+	if data.achievement_id or data.milestone_id or data.dlc == "has_stat" then return true end
+	seen = seen or {}
+	if seen[package_id] then return false end
+	seen[package_id] = true
+	return data.parent_dlc and is_progression_package(data.parent_dlc, seen) or false
+end
+
 -- Safe replace: stock give_dlc_package crashes / misbehaves on bad loot rows
 function GenericDLCManager:give_dlc_package()
 	if not Global.dlc_save then
@@ -270,7 +272,7 @@ function GenericDLCManager:give_dlc_package()
 					end
 				end
 			end
-		elseif managers.achievment and SilentDLC._achievement_fetch_ready == managers.achievment and Global.dlc_save.silent_dlc_progression_repair == 1 then
+		elseif is_progression_package(package_id) and managers.achievment and SilentDLC._achievement_fetch_ready == managers.achievment and Global.dlc_save.silent_dlc_progression_repair == 1 then
 			-- Do not revoke saved rewards from transient false achievement
 			-- flags during startup, or bypass a deferred recovery backup.
 			local identifier = UpgradesManager.AQUIRE_STRINGS[5] .. tostring(package_id)
@@ -461,6 +463,15 @@ end
 Hooks:PostHook(GenericDLCManager, "init_finalize", "SilentDLC_InitFinalize", function(self)
 	force_all_verified()
 	SilentDLC:refresh_real_ownership()
+	if SilentDLC.selected_apps and Global.dlc_manager and Global.dlc_manager.all_dlc_data then
+		local known = {}
+		for _, data in pairs(Global.dlc_manager.all_dlc_data) do
+			if data.app_id then known[tostring(data.app_id)] = true end
+		end
+		for id in pairs(SilentDLC.selected_apps) do
+			if not known[id] then log("[SilentDLC] Unknown Steam DLC ID: " .. id) end
+		end
+	end
 end)
 
 Hooks:PostHook(GenericDLCManager, "give_dlc_and_verify_blackmarket", "SilentDLC_GiveAndVerify", function(self)

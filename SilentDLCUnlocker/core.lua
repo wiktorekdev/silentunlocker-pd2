@@ -2,6 +2,38 @@ SilentDLC = SilentDLC or {}
 
 SilentDLC.MOD_PATH = SilentDLC.MOD_PATH or ModPath
 SilentDLC.SAVE_PATH = SavePath .. "silent_dlc_unlocker.json"
+SilentDLC.DLC_LIST_PATH = SavePath .. "silent_dlc_unlocker_dlcs.txt"
+
+function SilentDLC:load_dlc_selection()
+	local file, err, code = io.open(self.DLC_LIST_PATH, "r")
+	if not file then
+		if code and code ~= 2 then
+			log("[SilentDLC] Cannot read DLC selection: " .. tostring(err))
+			return {}
+		end
+		return nil
+	end
+	local ids, active = {}, false
+	for line in file:lines() do
+		line = line:gsub("#.*$", ""):match("^%s*(.-)%s*$")
+		if line ~= "" then
+			active = true
+			if line:match("^%d+$") then
+				ids[line] = true
+			else
+				log("[SilentDLC] Invalid DLC ID in selection: " .. line)
+			end
+		end
+	end
+	file:close()
+	return active and ids or nil
+end
+
+SilentDLC.selected_apps = SilentDLC:load_dlc_selection()
+
+function SilentDLC:dlc_data_selected(data)
+	return not self.selected_apps or data and data.app_id and self.selected_apps[tostring(data.app_id)] or false
+end
 
 -- safe   = hard block risky multiplayer actions
 -- normal = confirm risky multiplayer actions, then allow

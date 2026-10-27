@@ -2,6 +2,23 @@ if not SilentDLC then
 	dofile(ModPath .. "core.lua")
 end
 
+-- The game's verifier can sell a crafted weapon or reset saved cosmetics
+-- when a DLC is unavailable. Preserve existing items while it runs; normal
+-- unlock checks and package grants still use the selected DLC list.
+if BlackMarketManager._verify_dlc_items and not SilentDLC._item_verifier_wrapped then
+	SilentDLC._item_verifier_wrapped = true
+	local verify = BlackMarketManager._verify_dlc_items
+	function BlackMarketManager:_verify_dlc_items(...)
+		if not SilentDLC.selected_apps then return verify(self, ...) end
+		local previous = SilentDLC._preserve_dlc_items
+		SilentDLC._preserve_dlc_items = true
+		local result = { pcall(verify, self, ...) }
+		SilentDLC._preserve_dlc_items = previous
+		if not result[1] then error(result[2]) end
+		return unpack(result, 2)
+	end
+end
+
 -- Blackmarket callbacks reload the menu right after the guarded call, before
 -- a Normal-mode confirmation. Reload again once the confirmed action ran.
 local function confirmed(action)
